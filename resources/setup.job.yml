@@ -1,0 +1,42 @@
+resources:
+  jobs:
+    hytech_ws_setup:
+      name: hytech_ws_setup
+      description: >-
+        One-time workshop setup: catalog/schemas/volumes + grants, synthetic MT5 landing zone (DMS-style CDC),
+        participant schemas, governed system-table views, Genie Code skill.
+      max_concurrent_runs: 1
+      parameters:
+        - name: catalog
+          default: ${var.catalog}
+        - name: participant_group
+          default: ${var.participant_group}
+        - name: scale
+          default: full
+        - name: reset
+          default: "false"
+        - name: participants
+          default: ""
+      tasks:
+        - task_key: create_catalog_schemas
+          notebook_task:
+            notebook_path: ../setup/01_create_catalog_schemas.py
+        - task_key: generate_data
+          depends_on:
+            - task_key: create_catalog_schemas
+          notebook_task:
+            notebook_path: ../setup/02_generate_data.py
+          timeout_seconds: 3600
+        - task_key: participant_schemas
+          depends_on:
+            - task_key: create_catalog_schemas
+          notebook_task:
+            notebook_path: ../setup/04_participant_schemas.py
+        - task_key: ops_views
+          depends_on:
+            - task_key: create_catalog_schemas
+          notebook_task:
+            notebook_path: ../setup/05_ops_views.py
+        - task_key: install_genie_code_skill
+          notebook_task:
+            notebook_path: ../setup/06_install_genie_code_skill.py

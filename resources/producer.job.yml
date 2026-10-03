@@ -1,0 +1,28 @@
+resources:
+  jobs:
+    hytech_ws_drip_producer:
+      name: hytech_ws_drip_producer
+      description: >-
+        Instructor-only. Writes new DMS-style CDC files every interval (trades, closes, funding, client updates)
+        plus app events. new_server=mt5-hk-01 onboards a new MT5 server; bad_batch_pct injects invalid deals.
+      max_concurrent_runs: 1
+      parameters:
+        - name: catalog
+          default: ${var.catalog}
+        - name: duration_minutes
+          default: "60"
+        - name: interval_seconds
+          default: "30"
+        - name: servers
+          default: ""
+        - name: new_server
+          default: ""
+        - name: bad_batch_pct
+          default: "0"
+        - name: deals_per_tick
+          default: "24"
+      tasks:
+        - task_key: drip
+          notebook_task:
+            notebook_path: ../setup/03_drip_producer.py
+          timeout_seconds: 14400

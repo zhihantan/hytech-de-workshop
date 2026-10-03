@@ -1,0 +1,37 @@
+# Declarative Automation Bundle (formerly "Databricks Asset Bundles").
+#   databricks bundle validate                 # check config
+#   databricks bundle deploy  -t dev           # deploy to your dev copy (names prefixed with [dev <you>])
+#   databricks bundle run hytech_ws_setup      # build catalog + synthetic data
+#   databricks bundle deploy  -t prod          # CI/CD demo: shared, production-mode deployment
+bundle:
+  name: hytech-de-workshop
+
+include:
+  - resources/*.yml
+
+variables:
+  catalog:
+    description: Unity Catalog catalog for the workshop
+    default: hytech_de_workshop
+  participant_group:
+    description: Account-level group containing all participants
+    default: de_workshop_sz
+  llm_endpoint:
+    description: Foundation Model API endpoint used by ai_query
+    default: databricks-claude-sonnet-4-5
+
+targets:
+  dev:
+    mode: development
+    default: true
+    workspace:
+      host: https://fe-vm-zh-serverless-ws.cloud.databricks.com
+
+  prod:
+    mode: production
+    workspace:
+      host: https://fe-vm-zh-serverless-ws.cloud.databricks.com
+      root_path: /Workspace/Shared/.bundle/${bundle.name}/${bundle.target}
+    # In Hytech's CI/CD (GitLab) run production deployments as a service principal:
+    # run_as:
+    #   service_principal_name: <application-id>

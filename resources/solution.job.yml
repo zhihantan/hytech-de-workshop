@@ -1,0 +1,99 @@
+resources:
+  jobs:
+    hytech_daily_trading_reporting_solution:
+      name: hytech_daily_trading_reporting_solution
+      description: >-
+        Reference solution for lab 04: pipeline -> DQ gate (if/else) -> AI daily summary | DQ alert;
+        for-each server reconciliation; Run-if alerting and audit.
+      max_concurrent_runs: 1
+      parameters:
+        - name: catalog
+          default: ${var.catalog}
+        - name: schema
+          default: solutions
+        - name: dq_max_drop_pct
+          default: "1.0"
+        - name: servers
+          default: '["mt5-sg-01","mt5-sg-02","mt5-uk-01","mt5-cy-01"]'
+        - name: llm_endpoint
+          default: ${var.llm_endpoint}
+        - name: webhook_url
+          default: ""
+      tasks:
+        - task_key: run_pipeline
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.hytech_trade_lakehouse_solution.id}
+          max_retries: 1
+          min_retry_interval_millis: 60000
+
+        - task_key: dq_gate
+          depends_on:
+            - task_key: run_pipeline
+          notebook_task:
+            notebook_path: ../jobs/dq_gate.py
+
+        - task_key: dq_ok
+          depends_on:
+            - task_key: dq_gate
+          condition_task:
+            op: LESS_THAN
+            left: "{{tasks.dq_gate.values.dq_drop_pct}}"
+            right: "{{job.parameters.dq_max_drop_pct}}"
+
+        - task_key: publish_daily_summary
+          depends_on:
+            - task_key: dq_ok
+              outcome: "true"
+          notebook_task:
+            notebook_path: ../jobs/publish_daily_summary.py
+
+        - task_key: notify_dq_owner
+          depends_on:
+            - task_key: dq_ok
+              outcome: "false"
+          notebook_task:
+            notebook_path: ../jobs/notify.py
+            base_parameters:
+              reason: dq_gate_failed
+              job_id: "{{job.id}}"
+              run_id: "{{job.run_id}}"
+
+        - task_key: reconcile_servers
+          depends_on:
+            - task_key: run_pipeline
+          for_each_task:
+            inputs: "{{job.parameters.servers}}"
+            concurrency: 4
+            task:
+              task_key: reconcile_server
+              notebook_task:
+                notebook_path: ../jobs/reconcile_server.py
+                base_parameters:
+                  server_id: "{{input}}"
+
+        - task_key: alert_on_failure
+          depends_on:
+            - task_key: run_pipeline
+            - task_key: dq_gate
+            - task_key: reconcile_servers
+            - task_key: publish_daily_summary
+          run_if: AT_LEAST_ONE_FAILED
+          notebook_task:
+            notebook_path: ../jobs/notify.py
+            base_parameters:
+              reason: job_task_failed
+              job_id: "{{job.id}}"
+              run_id: "{{job.run_id}}"
+
+        - task_key: write_audit_row
+          depends_on:
+            - task_key: alert_on_failure
+            - task_key: notify_dq_owner
+            - task_key: publish_daily_summary
+            - task_key: reconcile_servers
+          run_if: ALL_DONE
+          notebook_task:
+            notebook_path: ../jobs/audit.py
+            base_parameters:
+              job_id: "{{job.id}}"
+              run_id: "{{job.run_id}}"

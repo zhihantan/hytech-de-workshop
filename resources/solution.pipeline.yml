@@ -1,0 +1,20 @@
+resources:
+  pipelines:
+    hytech_trade_lakehouse_solution:
+      name: hytech_trade_lakehouse_solution
+      catalog: ${var.catalog}
+      schema: solutions
+      serverless: true
+      channel: CURRENT
+      continuous: false
+      root_path: ../solutions/pipeline
+      libraries:
+        - glob:
+            include: ../solutions/pipeline/transformations/**
+      configuration:
+        landing_root: /Volumes/${var.catalog}/raw/landing
+        ref_root: /Volumes/${var.catalog}/raw/ref
+      event_log:
+        catalog: ${var.catalog}
+        schema: solutions
+        name: pipeline_event_log
