@@ -14,6 +14,7 @@ dbutils.widgets.text("reason", "job_task_failed")
 dbutils.widgets.text("job_id", "")
 dbutils.widgets.text("run_id", "")
 dbutils.widgets.text("webhook_url", "")
+dbutils.widgets.text("detail", "")
 
 catalog, schema = dbutils.widgets.get("catalog"), dbutils.widgets.get("schema")
 reason, job_id, run_id = dbutils.widgets.get("reason"), dbutils.widgets.get("job_id"), dbutils.widgets.get("run_id")
@@ -21,10 +22,8 @@ cs = f"{catalog}.{schema}"
 
 # COMMAND ----------
 
-try:
-    detail = f"dq_drop_pct={dbutils.jobs.taskValues.get(taskKey='dq_gate', key='dq_drop_pct', debugValue='n/a')}"
-except Exception:  # noqa: BLE001 - dq_gate may not have run
-    detail = ""
+# `detail` is filled by a dynamic value reference in the job, e.g. "{{tasks.dq_gate.values.dq_drop_pct}}"
+detail = dbutils.widgets.get("detail")
 message = f"[Hytech trade lakehouse] {reason} · job {job_id} run {run_id} · schema {cs} {detail}".strip()
 print(message)
 

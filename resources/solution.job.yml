@@ -19,6 +19,8 @@ resources:
           default: ${var.llm_endpoint}
         - name: webhook_url
           default: ""
+        - name: fail_server
+          default: ""
       tasks:
         - task_key: run_pipeline
           pipeline_task:
@@ -55,6 +57,7 @@ resources:
             notebook_path: ../jobs/notify.py
             base_parameters:
               reason: dq_gate_failed
+              detail: "dq_drop_pct={{tasks.dq_gate.values.dq_drop_pct}}% > {{job.parameters.dq_max_drop_pct}}%"
               job_id: "{{job.id}}"
               run_id: "{{job.run_id}}"
 

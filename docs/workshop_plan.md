@@ -120,16 +120,16 @@ One instructor presents while the other circulates; swap per module. With 20 new
 | # | Component | Path | Status |
 |---|---|---|---|
 | 1 | Plan (this doc), README | `docs/`, `README.md` | ✅ |
-| 2 | Config + synthetic generators (MT5 CDC, app events, refs) | `src/hytech_workshop/` | ☐ |
-| 3 | Setup notebooks (catalog, data, participants, ops views, skill install) + teardown | `setup/` | ☐ |
-| 4 | Drip producer job | `setup/05_drip_producer.py` | ☐ |
-| 5 | Solution pipeline (SQL + Python) | `solutions/pipeline/` | ☐ |
-| 6 | Job task notebooks (DQ gate, reconcile, AI summary, notify, audit) | `jobs/` | ☐ |
-| 7 | Declarative Automation Bundle (setup, producer, solution pipeline and job; dev/prod) | `databricks.yml`, `resources/` | ☐ |
-| 8 | Participant labs 00–07 + solutions | `labs/`, `solutions/` | ☐ |
-| 9 | Genie Code skill + prompt ladder | `genie_code/` | ☐ |
-| 10 | Facilitator guide, participant guide (zh), Triones setup guide, troubleshooting | `docs/` | ☐ |
-| 11 | End-to-end test on `fe-vm-zh-serverless-ws` (setup → pipeline → job → repair → system tables → AI) | evidence in `docs/` | ☐ |
+| 2 | Config + synthetic generators (MT5 CDC, app events, refs) | `src/hytech_workshop/` | ✅ |
+| 3 | Setup notebooks (catalog, data, participants, ops views, skill install) + teardown | `setup/` | ✅ |
+| 4 | Drip producer job | `setup/05_drip_producer.py` | ✅ |
+| 5 | Solution pipeline (SQL + Python) | `solutions/pipeline/` | ✅ |
+| 6 | Job task notebooks (DQ gate, reconcile, AI summary, notify, audit) | `jobs/` | ✅ |
+| 7 | Declarative Automation Bundle (setup, producer, solution pipeline and job; dev/prod) | `databricks.yml`, `resources/` | ✅ |
+| 8 | Participant labs 00–07 + solutions | `labs/`, `solutions/` | ✅ |
+| 9 | Genie Code skill + prompt ladder | `genie_code/` | ✅ |
+| 10 | Facilitator guide, participant guide (zh), Triones setup guide, troubleshooting | `docs/` | ✅ |
+| 11 | End-to-end test on `fe-vm-zh-serverless-ws` (setup → pipeline → job → repair → system tables → AI) | evidence in `docs/` | ✅ |
 
 **Test plan on FEVM**
 1. Deploy the bundle (dev) and run the setup job; check file counts and row counts.

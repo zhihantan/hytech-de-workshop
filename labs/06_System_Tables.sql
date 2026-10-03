@@ -1,0 +1,150 @@
+-- Databricks notebook source
+-- MAGIC %md
+-- MAGIC # 06 · 系统表 (System tables) — 成本、运行情况、血缘 (cost, runs, lineage) · LAB
+-- MAGIC 填写 `TODO`（答案在 `solutions/06_System_Tables`）
+-- MAGIC
+-- MAGIC 通过 `hytech_de_workshop.ops` 下的**治理视图**访问系统表：只包含本工作区的数据，SQL 文本已移除，其他人的身份被掩码。
+-- MAGIC 这本身就是一个治理实践：分析师不需要直接访问整个账户的系统表。
+-- MAGIC
+-- MAGIC ⚠️ 账单数据（billing）有数小时延迟：今天的运行可能明天早上才完整出现。
+
+-- COMMAND ----------
+
+DECLARE OR REPLACE VARIABLE my_schema STRING DEFAULT
+  'u_' || regexp_replace(lower(split_part(current_user(), '@', 1)), '[^a-z0-9]', '_');
+DECLARE OR REPLACE VARIABLE my_pipeline_id STRING;
+DECLARE OR REPLACE VARIABLE my_job_id STRING;
+
+USE CATALOG hytech_de_workshop;
+USE SCHEMA ops;
+
+-- Your pipeline (lab 03) and job (lab 04), found by owner + name
+SET VAR my_pipeline_id = (
+  SELECT max_by(pipeline_id, create_time) FROM pipelines
+  WHERE created_by = current_user() AND name LIKE 'trade_lakehouse%' AND delete_time IS NULL);
+SET VAR my_job_id = (
+  SELECT max_by(job_id, change_time) FROM jobs
+  WHERE creator_user_name = current_user() AND name LIKE '%daily_trading_reporting%' AND delete_time IS NULL);
+
+SELECT my_schema, my_pipeline_id, my_job_id;
+
+-- COMMAND ----------
+
+-- MAGIC %md ## 1 · 管道每次更新 (Pipeline updates)
+
+-- COMMAND ----------
+
+SELECT update_id,
+       max(update_type)                                        AS update_type,
+       min(period_start_time)                                  AS started_at,
+       max(period_end_time)                                    AS ended_at,
+       timestampdiff(SECOND, min(period_start_time), max(period_end_time)) AS seconds,
+       max_by(result_state, period_end_time)                   AS result_state
+FROM pipeline_update_timeline
+WHERE pipeline_id = my_pipeline_id
+GROUP BY update_id
+ORDER BY started_at DESC
+LIMIT 20;
+
+-- COMMAND ----------
+
+-- MAGIC %md ## 2 · 作业运行与任务耗时 (Job runs and task durations)
+
+-- COMMAND ----------
+
+SELECT run_id,
+       min(period_start_time)                 AS started_at,
+       max(run_duration_seconds)              AS run_seconds,
+       max_by(result_state, period_end_time)  AS result_state,
+       max(trigger_type)                      AS trigger_type
+FROM job_run_timeline
+WHERE job_id = my_job_id
+GROUP BY run_id
+ORDER BY started_at DESC
+LIMIT 10;
+
+-- COMMAND ----------
+
+SELECT task_key,
+       count(*)                                         AS task_runs,
+       count_if(result_state = 'FAILED')                AS failures,
+       round(avg(execution_duration_seconds))           AS avg_exec_seconds,
+       max(execution_duration_seconds)                  AS max_exec_seconds
+FROM job_task_run_timeline
+WHERE job_id = my_job_id
+GROUP BY task_key
+ORDER BY avg_exec_seconds DESC;
+
+-- COMMAND ----------
+
+-- MAGIC %md
+-- MAGIC ## 3 · 成本 (Cost) — DBU × 标价 (list price)
+-- MAGIC `billing_usage.usage_metadata` 记录了每条用量来自哪个管道 / 作业 / 作业运行。
+-- MAGIC 实际价格 = 标价 × 合同折扣（Hytech POC 中按 DLT 24% 折扣计算）。
+
+-- COMMAND ----------
+
+SELECT u.usage_date,
+       u.billing_origin_product,
+       round(sum(u.usage_quantity), 3)                        AS dbus,
+       -- TODO 1 · cost = DBUs × list price (p.pricing.default)
+       round(sum(____), 2)                                    AS list_cost_usd
+FROM billing_usage u
+JOIN list_prices p
+  -- TODO 2 · join usage to its price by SKU name
+  ON ____
+ AND u.usage_start_time >= p.price_start_time
+ AND (p.price_end_time IS NULL OR u.usage_start_time < p.price_end_time)
+WHERE u.usage_metadata.dlt_pipeline_id = my_pipeline_id
+   OR u.usage_metadata.job_id = my_job_id
+GROUP BY ALL
+ORDER BY u.usage_date, u.billing_origin_product;
+
+-- COMMAND ----------
+
+-- Cost per job run (which run was the most expensive?)
+SELECT u.usage_metadata.job_run_id                          AS job_run_id,
+       round(sum(u.usage_quantity), 3)                      AS dbus,
+       round(sum(u.usage_quantity * p.pricing.default), 3)  AS list_cost_usd
+FROM billing_usage u
+JOIN list_prices p
+  ON u.sku_name = p.sku_name
+ AND u.usage_start_time >= p.price_start_time
+ AND (p.price_end_time IS NULL OR u.usage_start_time < p.price_end_time)
+WHERE u.usage_metadata.job_id = my_job_id
+GROUP BY ALL
+ORDER BY list_cost_usd DESC;
+
+-- COMMAND ----------
+
+-- MAGIC %md ## 4 · 血缘 (Lineage) — 你的表从哪里来，被谁使用
+
+-- COMMAND ----------
+
+SELECT DISTINCT
+       coalesce(source_table_full_name, source_path) AS source,
+       target_table_full_name                       AS target,
+       entity_type
+FROM table_lineage
+-- TODO 3 · keep lineage edges where your schema is the source or the target
+WHERE ____
+ORDER BY target, source;
+
+-- COMMAND ----------
+
+-- MAGIC %md ## 5 · 查询历史 (Query history) — 你最近的 SQL
+
+-- COMMAND ----------
+
+SELECT start_time, statement_type, execution_status, total_duration_ms, read_rows, produced_rows, client_application
+FROM query_history
+WHERE executed_by = current_user()
+ORDER BY start_time DESC
+LIMIT 20;
+
+-- COMMAND ----------
+
+-- MAGIC %md
+-- MAGIC ## 6 · 思考 (Discuss)
+-- MAGIC * Hytech 每周的成本复盘需要哪些指标？（团队 / 管道 / 作业 / 失败运行浪费 / 全量 vs 增量）
+-- MAGIC * 用 Genie Code 把上面的成本查询做成一个 AI/BI 仪表盘页面（Lab 05 的最后一题）。

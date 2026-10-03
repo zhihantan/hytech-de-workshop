@@ -6,13 +6,15 @@
 # MAGIC 1. the DMS landing folder must exist (fails for a server whose DMS task has not started yet), and
 # MAGIC 2. every **valid** inserted deal in bronze must be in silver (expectations dropped only the invalid ones).
 # MAGIC
-# MAGIC Results are appended to `ops_reconciliation`.
+# MAGIC Results are appended to `ops_reconciliation`. Lab helper: job parameter `fail_server` makes one iteration fail
+# MAGIC on purpose so you can practise **Repair run**.
 
 # COMMAND ----------
 
 dbutils.widgets.text("catalog", "hytech_de_workshop")
 dbutils.widgets.text("schema", "")
 dbutils.widgets.text("server_id", "mt5-sg-01")
+dbutils.widgets.text("fail_server", "", "Lab: make this server fail on purpose")
 
 catalog = dbutils.widgets.get("catalog")
 schema = dbutils.widgets.get("schema")
@@ -21,6 +23,9 @@ cs = f"{catalog}.{schema}"
 landing = f"/Volumes/{catalog}/raw/landing/mt5/{server}/mt5_deals"
 
 # COMMAND ----------
+
+if server == dbutils.widgets.get("fail_server").strip():
+    raise RuntimeError(f"[{server}] simulated failure (job parameter fail_server={server}) — clear it and use Repair run")
 
 try:
     files = [f for f in dbutils.fs.ls(landing) if f.name.endswith(".parquet")]
@@ -38,6 +43,9 @@ counts = spark.sql(f"""
 """).first()
 bronze_valid, silver = counts["bronze_valid_inserts"], counts["silver_rows"]
 status = "OK" if bronze_valid == silver else "MISMATCH"
+if bronze_valid == 0:
+    print(f"[{server}] note: {len(files)} landing files but nothing ingested yet — new server? "
+          "The next pipeline update picks it up automatically (the bronze path glob is mt5/*/<table>/).")
 print(f"[{server}] landing_files={len(files)} bronze_valid_inserts={bronze_valid:,} silver_rows={silver:,} -> {status}")
 
 spark.sql(f"""

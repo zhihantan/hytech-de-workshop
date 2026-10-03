@@ -80,7 +80,9 @@ request conflicts with a rule, say so and propose the compliant alternative.
 
 ## 6. Governance (Unity Catalog)
 
-- PII columns (`email`, `phone`, `first_name`, `last_name`) get the tag `pii` and a column mask.
+- PII columns (`email`, `phone`, `first_name`, `last_name`) get the tag `pii_category` (value = the PII
+  type) and a column mask. In production use the **governed tag** keys and values defined by Hytech's data
+  governance team — governed tags reject values outside their allowed list (`UC_TAG_POLICY_VALUE_NOT_ALLOWED`).
   Mask and row-filter functions use `is_account_group_member('<group>')`.
 - Grant to **groups**, never to individual users. Least privilege: `USE CATALOG`, `USE SCHEMA`, `SELECT`.
 - No secrets or tokens in code. Webhook URLs come from job parameters or a secret scope.
