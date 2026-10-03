@@ -1,0 +1,1158 @@
+{
+  "datasets": [
+    {
+      "name": "ds_cost",
+      "displayName": "Workshop cost by day",
+      "queryLines": [
+        "WITH resources AS (\n",
+        "  SELECT pipeline_id AS resource_id, 'pipeline' AS resource_type,\n",
+        "         max_by(name, change_time) AS resource_name, max_by(created_by, change_time) AS owner\n",
+        "  FROM hytech_de_workshop.ops.pipelines GROUP BY pipeline_id\n",
+        "  UNION ALL\n",
+        "  SELECT job_id, 'job', max_by(name, change_time), max_by(creator_user_name, change_time)\n",
+        "  FROM hytech_de_workshop.ops.jobs GROUP BY job_id\n",
+        "),\n",
+        "workshop AS (\n",
+        "  SELECT * FROM resources\n",
+        "  WHERE resource_name ILIKE '%trade_lakehouse%' OR resource_name ILIKE '%daily_trading_reporting%' OR resource_name ILIKE '%hytech_ws_%'\n",
+        ")\n",
+        "SELECT u.usage_date,\n",
+        "       u.billing_origin_product                                          AS product,\n",
+        "       w.resource_type,\n",
+        "       w.resource_name,\n",
+        "       w.owner,\n",
+        "       CAST(sum(u.usage_quantity) AS DECIMAL(18, 3))                     AS dbus,\n",
+        "       CAST(sum(u.usage_quantity * p.pricing.default) AS DECIMAL(18, 2)) AS list_cost_usd\n",
+        "FROM hytech_de_workshop.ops.billing_usage u\n",
+        "JOIN workshop w\n",
+        "  ON w.resource_id = coalesce(u.usage_metadata.dlt_pipeline_id, u.usage_metadata.job_id)\n",
+        "JOIN hytech_de_workshop.ops.list_prices p\n",
+        "  ON u.sku_name = p.sku_name\n",
+        " AND u.usage_start_time >= p.price_start_time\n",
+        " AND (p.price_end_time IS NULL OR u.usage_start_time < p.price_end_time)\n",
+        "WHERE u.usage_date >= current_date() - INTERVAL 30 DAYS\n",
+        "GROUP BY ALL\n"
+      ]
+    },
+    {
+      "name": "ds_job_runs",
+      "displayName": "Workshop job runs",
+      "queryLines": [
+        "WITH jobs AS (\n",
+        "  SELECT job_id, max_by(name, change_time) AS resource_name\n",
+        "  FROM hytech_de_workshop.ops.jobs GROUP BY job_id\n",
+        "),\n",
+        "task_failures AS (\n",
+        "  -- a run that ends \"Succeeded with failures\" still reports SUCCEEDED, so count failed tasks per run\n",
+        "  SELECT job_run_id, count_if(result_state = 'FAILED') AS failed_tasks\n",
+        "  FROM hytech_de_workshop.ops.job_task_run_timeline\n",
+        "  WHERE period_start_time >= current_date() - INTERVAL 30 DAYS\n",
+        "  GROUP BY job_run_id\n",
+        ")\n",
+        "SELECT j.resource_name                                  AS job_name,\n",
+        "       r.run_id,\n",
+        "       min(r.period_start_time)                         AS started_at,\n",
+        "       timestampdiff(SECOND, min(r.period_start_time), max(r.period_end_time)) AS duration_s,\n",
+        "       coalesce(max_by(r.result_state, r.period_end_time), 'RUNNING') AS result_state,\n",
+        "       max(r.trigger_type)                              AS trigger_type,\n",
+        "       coalesce(max(tf.failed_tasks), 0)                AS failed_tasks,\n",
+        "       CASE WHEN max_by(r.result_state, r.period_end_time) IN ('FAILED', 'ERROR', 'TIMED_OUT')\n",
+        "              OR coalesce(max(tf.failed_tasks), 0) > 0\n",
+        "            THEN 1 ELSE 0 END                           AS is_failed\n",
+        "FROM hytech_de_workshop.ops.job_run_timeline r\n",
+        "JOIN jobs j USING (job_id)\n",
+        "LEFT JOIN task_failures tf ON tf.job_run_id = r.run_id\n",
+        "WHERE (j.resource_name ILIKE '%trade_lakehouse%' OR j.resource_name ILIKE '%daily_trading_reporting%' OR j.resource_name ILIKE '%hytech_ws_%')\n",
+        "  AND r.period_start_time >= current_date() - INTERVAL 30 DAYS\n",
+        "GROUP BY j.resource_name, r.run_id\n",
+        "ORDER BY started_at DESC\n"
+      ]
+    },
+    {
+      "name": "ds_task_runs",
+      "displayName": "Workshop task runs",
+      "queryLines": [
+        "WITH jobs AS (\n",
+        "  SELECT job_id, max_by(name, change_time) AS job_name\n",
+        "  FROM hytech_de_workshop.ops.jobs GROUP BY job_id\n",
+        ")\n",
+        "SELECT j.job_name,\n",
+        "       t.task_key,\n",
+        "       t.run_id                                           AS task_run_id,\n",
+        "       max(t.execution_duration_seconds)                  AS exec_s,\n",
+        "       max_by(t.result_state, t.period_end_time)          AS result_state\n",
+        "FROM hytech_de_workshop.ops.job_task_run_timeline t\n",
+        "JOIN jobs j USING (job_id)\n",
+        "WHERE j.job_name ILIKE '%daily_trading_reporting%'\n",
+        "  AND t.period_start_time >= current_date() - INTERVAL 30 DAYS\n",
+        "GROUP BY j.job_name, t.task_key, t.run_id\n"
+      ]
+    },
+    {
+      "name": "ds_pipeline_updates",
+      "displayName": "Workshop pipeline updates",
+      "queryLines": [
+        "WITH pipelines AS (\n",
+        "  SELECT pipeline_id, max_by(name, change_time) AS pipeline_name\n",
+        "  FROM hytech_de_workshop.ops.pipelines GROUP BY pipeline_id\n",
+        ")\n",
+        "SELECT p.pipeline_name,\n",
+        "       min(t.period_start_time)                                                AS started_at,\n",
+        "       timestampdiff(SECOND, min(t.period_start_time), max(t.period_end_time)) AS duration_s,\n",
+        "       max(t.update_type)                                                      AS update_type,\n",
+        "       max(t.trigger_type)                                                     AS trigger_type,\n",
+        "       coalesce(max_by(t.result_state, t.period_end_time), 'RUNNING')          AS result_state,\n",
+        "       t.update_id\n",
+        "FROM hytech_de_workshop.ops.pipeline_update_timeline t\n",
+        "JOIN pipelines p USING (pipeline_id)\n",
+        "WHERE p.pipeline_name ILIKE '%trade_lakehouse%'\n",
+        "  AND t.period_start_time >= current_date() - INTERVAL 30 DAYS\n",
+        "GROUP BY p.pipeline_name, t.update_id\n",
+        "ORDER BY started_at DESC\n"
+      ]
+    }
+  ],
+  "pages": [
+    {
+      "name": "p_cost",
+      "displayName": "成本 Cost",
+      "layout": [
+        {
+          "widget": {
+            "name": "t_cost",
+            "multilineTextboxSpec": {
+              "lines": [
+                "## Hytech DE 工作坊 · 成本 (Workshop cost)\n",
+                "只统计工作坊的管道和作业（名称包含 `trade_lakehouse`、`daily_trading_reporting`、`hytech_ws_`），最近 30 天。按**标价 (list price)** 计算：实际价格 = 标价 × 合同折扣。账单数据有数小时延迟。数据来自治理视图 `hytech_de_workshop.ops.*`。\n"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 6,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "f_resource",
+            "queries": [
+              {
+                "name": "f_resource_ds_cost_resource_name",
+                "query": {
+                  "datasetName": "ds_cost",
+                  "fields": [
+                    {
+                      "name": "resource_name",
+                      "expression": "`resource_name`"
+                    },
+                    {
+                      "name": "resource_name_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-multi-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "resource_name",
+                    "displayName": "管道 / 作业 (Pipeline / job)",
+                    "queryName": "f_resource_ds_cost_resource_name"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "管道 / 作业 (Pipeline / job)"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 2,
+            "width": 3,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "c_cost",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_cost",
+                  "fields": [
+                    {
+                      "name": "sum(list_cost_usd)",
+                      "expression": "SUM(`list_cost_usd`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(list_cost_usd)",
+                  "displayName": "成本 Cost (USD, list)"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "成本 Cost (USD, list)"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 4,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "c_dbus",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_cost",
+                  "fields": [
+                    {
+                      "name": "sum(dbus)",
+                      "expression": "SUM(`dbus`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(dbus)",
+                  "displayName": "DBUs"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "DBUs"
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 4,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "c_resources",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_cost",
+                  "fields": [
+                    {
+                      "name": "countdistinct(resource_name)",
+                      "expression": "COUNT(DISTINCT `resource_name`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "countdistinct(resource_name)",
+                  "displayName": "有成本的管道和作业 (Pipelines + jobs with cost)"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "有成本的管道和作业 (Pipelines + jobs with cost)"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 4,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "b_cost_daily",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_cost",
+                  "fields": [
+                    {
+                      "name": "daily(usage_date)",
+                      "expression": "DATE_TRUNC(\"DAY\", `usage_date`)"
+                    },
+                    {
+                      "name": "product",
+                      "expression": "`product`"
+                    },
+                    {
+                      "name": "sum(list_cost_usd)",
+                      "expression": "SUM(`list_cost_usd`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "daily(usage_date)",
+                  "scale": {
+                    "type": "temporal"
+                  },
+                  "displayName": "日期 Date"
+                },
+                "y": {
+                  "fieldName": "sum(list_cost_usd)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "USD"
+                },
+                "color": {
+                  "fieldName": "product",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "产品 Product"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "每日成本 (Daily cost by product)"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 7,
+            "width": 6,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "b_cost_resource",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_cost",
+                  "fields": [
+                    {
+                      "name": "resource_name",
+                      "expression": "`resource_name`"
+                    },
+                    {
+                      "name": "resource_type",
+                      "expression": "`resource_type`"
+                    },
+                    {
+                      "name": "sum(list_cost_usd)",
+                      "expression": "SUM(`list_cost_usd`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "sum(list_cost_usd)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "USD"
+                },
+                "y": {
+                  "fieldName": "resource_name",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "管道 / 作业"
+                },
+                "color": {
+                  "fieldName": "resource_type",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "类型 Type"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "每个管道 / 作业的成本 (Cost per pipeline / job)"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 13,
+            "width": 6,
+            "height": 8
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS"
+    },
+    {
+      "name": "p_runs",
+      "displayName": "运行 Runs",
+      "layout": [
+        {
+          "widget": {
+            "name": "t_runs",
+            "multilineTextboxSpec": {
+              "lines": [
+                "## 运行情况 (Runs & health)\n",
+                "工作坊作业的运行、任务耗时和管道更新（最近 30 天），来自 `system.lakeflow` 的治理视图。\n"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 6,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "c_runs",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_job_runs",
+                  "fields": [
+                    {
+                      "name": "count(run_id)",
+                      "expression": "COUNT(`run_id`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "count(run_id)",
+                  "displayName": "作业运行 Job runs"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "作业运行 Job runs"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 2,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "c_failed",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_job_runs",
+                  "fields": [
+                    {
+                      "name": "sum(is_failed)",
+                      "expression": "SUM(`is_failed`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(is_failed)",
+                  "displayName": "有任务失败的运行 Runs with failed tasks"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "有任务失败的运行 Runs with failed tasks"
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 2,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "c_updates",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_pipeline_updates",
+                  "fields": [
+                    {
+                      "name": "count(update_id)",
+                      "expression": "COUNT(`update_id`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "count(update_id)",
+                  "displayName": "管道更新 Pipeline updates"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "管道更新 Pipeline updates"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 2,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "b_runs_daily",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_job_runs",
+                  "fields": [
+                    {
+                      "name": "daily(started_at)",
+                      "expression": "DATE_TRUNC(\"DAY\", `started_at`)"
+                    },
+                    {
+                      "name": "result_state",
+                      "expression": "`result_state`"
+                    },
+                    {
+                      "name": "count(run_id)",
+                      "expression": "COUNT(`run_id`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "daily(started_at)",
+                  "scale": {
+                    "type": "temporal"
+                  },
+                  "displayName": "日期 Date"
+                },
+                "y": {
+                  "fieldName": "count(run_id)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Runs"
+                },
+                "color": {
+                  "fieldName": "result_state",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "结果 Result"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "每日作业运行 (Job runs per day)"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 5,
+            "width": 3,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "b_task_secs",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_task_runs",
+                  "fields": [
+                    {
+                      "name": "task_key",
+                      "expression": "`task_key`"
+                    },
+                    {
+                      "name": "avg(exec_s)",
+                      "expression": "AVG(`exec_s`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "task_key",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "任务 Task"
+                },
+                "y": {
+                  "fieldName": "avg(exec_s)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "秒 Seconds"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "任务平均执行时间 (Avg task execution seconds)"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 5,
+            "width": 3,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "tbl_updates",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_pipeline_updates",
+                  "fields": [
+                    {
+                      "name": "pipeline_name",
+                      "expression": "`pipeline_name`"
+                    },
+                    {
+                      "name": "started_at",
+                      "expression": "`started_at`"
+                    },
+                    {
+                      "name": "duration_s",
+                      "expression": "`duration_s`"
+                    },
+                    {
+                      "name": "update_type",
+                      "expression": "`update_type`"
+                    },
+                    {
+                      "name": "trigger_type",
+                      "expression": "`trigger_type`"
+                    },
+                    {
+                      "name": "result_state",
+                      "expression": "`result_state`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 1,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "pipeline_name",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "alignContent": "left",
+                    "visible": true,
+                    "order": 100000,
+                    "title": "管道 Pipeline",
+                    "allowSearch": false,
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "管道 Pipeline"
+                  },
+                  {
+                    "fieldName": "started_at",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "dateTimeFormat": "YYYY-MM-DD HH:mm:ss",
+                    "type": "datetime",
+                    "displayAs": "datetime",
+                    "alignContent": "right",
+                    "visible": true,
+                    "order": 100001,
+                    "title": "开始 Started",
+                    "allowSearch": false,
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "开始 Started"
+                  },
+                  {
+                    "fieldName": "duration_s",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "numberFormat": "0",
+                    "type": "integer",
+                    "displayAs": "number",
+                    "alignContent": "right",
+                    "visible": true,
+                    "order": 100002,
+                    "title": "秒 Seconds",
+                    "allowSearch": false,
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "秒 Seconds"
+                  },
+                  {
+                    "fieldName": "update_type",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "alignContent": "left",
+                    "visible": true,
+                    "order": 100003,
+                    "title": "类型 Type",
+                    "allowSearch": false,
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "类型 Type"
+                  },
+                  {
+                    "fieldName": "trigger_type",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "alignContent": "left",
+                    "visible": true,
+                    "order": 100004,
+                    "title": "触发 Trigger",
+                    "allowSearch": false,
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "触发 Trigger"
+                  },
+                  {
+                    "fieldName": "result_state",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "alignContent": "left",
+                    "visible": true,
+                    "order": 100005,
+                    "title": "结果 Result",
+                    "allowSearch": false,
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "结果 Result"
+                  }
+                ]
+              },
+              "invisibleColumns": [],
+              "allowHTMLByDefault": false,
+              "itemsPerPage": 25,
+              "paginationSize": "default",
+              "condensed": true,
+              "withRowNumber": false,
+              "frame": {
+                "showTitle": true,
+                "title": "管道更新 (Pipeline updates)"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 11,
+            "width": 6,
+            "height": 7
+          }
+        },
+        {
+          "widget": {
+            "name": "tbl_runs",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_job_runs",
+                  "fields": [
+                    {
+                      "name": "job_name",
+                      "expression": "`job_name`"
+                    },
+                    {
+                      "name": "started_at",
+                      "expression": "`started_at`"
+                    },
+                    {
+                      "name": "duration_s",
+                      "expression": "`duration_s`"
+                    },
+                    {
+                      "name": "result_state",
+                      "expression": "`result_state`"
+                    },
+                    {
+                      "name": "failed_tasks",
+                      "expression": "`failed_tasks`"
+                    },
+                    {
+                      "name": "trigger_type",
+                      "expression": "`trigger_type`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 1,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "job_name",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "alignContent": "left",
+                    "visible": true,
+                    "order": 100000,
+                    "title": "作业 Job",
+                    "allowSearch": false,
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "作业 Job"
+                  },
+                  {
+                    "fieldName": "started_at",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "dateTimeFormat": "YYYY-MM-DD HH:mm:ss",
+                    "type": "datetime",
+                    "displayAs": "datetime",
+                    "alignContent": "right",
+                    "visible": true,
+                    "order": 100001,
+                    "title": "开始 Started",
+                    "allowSearch": false,
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "开始 Started"
+                  },
+                  {
+                    "fieldName": "duration_s",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "numberFormat": "0",
+                    "type": "integer",
+                    "displayAs": "number",
+                    "alignContent": "right",
+                    "visible": true,
+                    "order": 100002,
+                    "title": "秒 Seconds",
+                    "allowSearch": false,
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "秒 Seconds"
+                  },
+                  {
+                    "fieldName": "result_state",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "alignContent": "left",
+                    "visible": true,
+                    "order": 100003,
+                    "title": "结果 Result",
+                    "allowSearch": false,
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "结果 Result"
+                  },
+                  {
+                    "fieldName": "failed_tasks",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "numberFormat": "0",
+                    "type": "integer",
+                    "displayAs": "number",
+                    "alignContent": "right",
+                    "visible": true,
+                    "order": 100004,
+                    "title": "失败任务 Failed tasks",
+                    "allowSearch": false,
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "失败任务 Failed tasks"
+                  },
+                  {
+                    "fieldName": "trigger_type",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "alignContent": "left",
+                    "visible": true,
+                    "order": 100005,
+                    "title": "触发 Trigger",
+                    "allowSearch": false,
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "触发 Trigger"
+                  }
+                ]
+              },
+              "invisibleColumns": [],
+              "allowHTMLByDefault": false,
+              "itemsPerPage": 25,
+              "paginationSize": "default",
+              "condensed": true,
+              "withRowNumber": false,
+              "frame": {
+                "showTitle": true,
+                "title": "作业运行 (Job runs)"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 18,
+            "width": 6,
+            "height": 7
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS"
+    }
+  ]
+}

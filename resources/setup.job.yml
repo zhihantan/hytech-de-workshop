@@ -17,6 +17,8 @@ resources:
           default: "false"
         - name: participants
           default: ""
+        - name: warehouse_id
+          default: ${var.warehouse_id}
       tasks:
         - task_key: create_catalog_schemas
           notebook_task:
@@ -37,6 +39,11 @@ resources:
             - task_key: create_catalog_schemas
           notebook_task:
             notebook_path: ../setup/05_ops_views.py
+        - task_key: cost_dashboard
+          depends_on:
+            - task_key: ops_views
+          notebook_task:
+            notebook_path: ../setup/07_cost_dashboard.py
         - task_key: install_genie_code_skill
           notebook_task:
             notebook_path: ../setup/06_install_genie_code_skill.py

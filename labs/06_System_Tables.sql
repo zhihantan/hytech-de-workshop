@@ -54,7 +54,8 @@ LIMIT 20;
 
 SELECT run_id,
        min(period_start_time)                 AS started_at,
-       max(run_duration_seconds)              AS run_seconds,
+       -- run_duration_seconds can be 0 for serverless runs, so derive it from the period timestamps
+       timestampdiff(SECOND, min(period_start_time), max(period_end_time)) AS run_seconds,
        max_by(result_state, period_end_time)  AS result_state,
        max(trigger_type)                      AS trigger_type
 FROM job_run_timeline

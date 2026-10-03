@@ -1,0 +1,45 @@
+# GitLab CI/CD for this bundle. Copy to the root of a GitLab project as .gitlab-ci.yml.
+#
+# Merge requests run `bundle validate`. Merges to the default branch deploy the `cicd` target as a service
+# principal (OAuth M2M), so nobody needs direct deploy rights in production.
+#
+# Settings → CI/CD → Variables (Masked; Protected so only protected branches can deploy):
+#   DATABRICKS_CLIENT_ID       service principal application ID
+#   DATABRICKS_CLIENT_SECRET   service principal OAuth secret
+# The workspace URL comes from `workspace.host` in databricks.yml. Optional bundle variables, e.g.
+#   BUNDLE_VAR_catalog=hytech_de_workshop   BUNDLE_VAR_llm_endpoint=databricks-claude-sonnet-4-5
+#
+# The runner downloads the CLI from github.com. If your runners cannot reach GitHub, bake the CLI into the
+# runner image or mirror the release zip internally.
+
+variables:
+  DATABRICKS_CLI_VERSION: "0.299.2"
+  BUNDLE_TARGET: cicd
+  BUNDLE_VAR_cicd_service_principal: $DATABRICKS_CLIENT_ID
+
+stages: [validate, deploy]
+
+default:
+  image: debian:bookworm-slim
+  before_script:
+    - apt-get update -qq && apt-get install -y -qq --no-install-recommends ca-certificates curl unzip > /dev/null
+    - curl -fsSL "https://raw.githubusercontent.com/databricks/setup-cli/v${DATABRICKS_CLI_VERSION}/install.sh" | sh
+    - databricks --version   # `bundle validate` then prints the deploying identity ("User: <application ID>")
+
+validate:
+  stage: validate
+  script:
+    - databricks bundle validate -t "$BUNDLE_TARGET"
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+
+deploy:
+  stage: deploy
+  script:
+    - databricks bundle validate -t "$BUNDLE_TARGET"
+    - databricks bundle deploy -t "$BUNDLE_TARGET" --auto-approve
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  environment:
+    name: production
+  resource_group: databricks-production   # one deployment at a time

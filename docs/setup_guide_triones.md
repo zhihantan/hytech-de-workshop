@@ -30,11 +30,12 @@ From the Git folder: open `databricks.yml` → **Deploy** (bundle UI), or with t
 databricks bundle deploy -t prod --var="catalog=hytech_de_workshop" --var="llm_endpoint=<your endpoint>"
 ```
 
-Set `workspace.host` in `databricks.yml` to your workspace URL first. This creates:
+Set `workspace.host` in `databricks.yml` to your workspace URL first. (The `cicd` target is the instructors'
+CI/CD demo, see `docs/cicd_demo.md`; you don't need to deploy it.) This creates:
 
 | Resource | Purpose |
 |---|---|
-| Job `hytech_ws_setup` | Catalog, schemas, volumes, grants, synthetic data, participant schemas, ops views, Genie Code skill |
+| Job `hytech_ws_setup` | Catalog, schemas, volumes, grants, synthetic data, participant schemas, ops views, cost dashboard, Genie Code skill |
 | Job `hytech_ws_drip_producer` | Instructor-only: keeps new CDC files arriving during the labs |
 | Pipeline `hytech_trade_lakehouse_solution` | Instructor solution (catch-up, AI lab data) |
 | Job `hytech_daily_trading_reporting_solution` | Instructor solution for lab 04 |
@@ -50,8 +51,11 @@ Run **`hytech_ws_setup`** with these job parameters:
 | `participants` | the participants' emails, comma-separated (creates and hands over `u_<name>` schemas) |
 | `scale` | `full` |
 | `reset` | `false` (first run generates the data. Use `true` only to regenerate **before** the workshop) |
+| `warehouse_id` | Optional: SQL warehouse for the cost dashboard (empty = a serverless warehouse is picked) |
 
-Takes about 10 minutes. Check that every task is green. In `generate_data`, the summary should show 4 servers ×
+Takes about 10 minutes. Check that every task is green. The `cost_dashboard` task prints the dashboard link: it is
+in your home folder (`/Workspace/Users/<you>/hytech_de_workshop`) and shared read-only with `de_workshop_sz`.
+Please also share it with Zhi Han and Germaine (*Share* → Can Manage). In `generate_data`, the summary should show 4 servers ×
 3 tables, each with 1 LOAD file + 48 CDC files.
 
 ## 4 · 运行讲师解决方案 (Run the solution once)

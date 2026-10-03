@@ -3,7 +3,7 @@ resources:
     hytech_trade_lakehouse_solution:
       name: hytech_trade_lakehouse_solution
       catalog: ${var.catalog}
-      schema: solutions
+      schema: ${var.solutions_schema}
       serverless: true
       channel: CURRENT
       continuous: false
@@ -16,5 +16,5 @@ resources:
         ref_root: /Volumes/${var.catalog}/raw/ref
       event_log:
         catalog: ${var.catalog}
-        schema: solutions
+        schema: ${var.solutions_schema}
         name: pipeline_event_log

@@ -57,7 +57,10 @@ def test_deal_ids_unique_and_inserts_dominate(landing):
     assert inserts.Deal.is_unique
     assert (deals.Op == "I").mean() > 0.98
     trades = inserts[inserts.Action != 2]
-    assert ((trades.Volume == 0) | trades.Symbol.isna() | (trades.Price <= 0)).sum() > 0, "no invalid rows injected"
+    # finalize_deals injects four kinds of invalid row; small test batches may get only one, of any kind
+    future = trades.Time > pd.Timestamp.now(tz="UTC") + pd.Timedelta(days=1)
+    invalid = (trades.Volume == 0) | trades.Symbol.isna() | (trades.Price <= 0) | future
+    assert invalid.sum() > 0, "no invalid rows injected"
 
 
 def test_clients_lose_on_average(landing):

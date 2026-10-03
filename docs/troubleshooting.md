@@ -17,6 +17,10 @@
 | `_rescued_data` is always NULL | Schema was inferred (it widened types) instead of using the contract schema | Use the explicit schema + `rescuedDataColumn` as in lab 02 / `02_bronze_app_events.sql` |
 | No new rows after re-running Auto Loader | No new files arrived | Ask the instructor to start the drip producer |
 | System-table queries return nothing for today | Billing data lags by hours | Look at yesterday / Day 1; job and pipeline timelines arrive sooner |
+| A run with a failed task shows `SUCCEEDED` in `job_run_timeline` | A run that ends *Succeeded with failures* reports SUCCEEDED at run level | Count failed tasks per run from `job_task_run_timeline` (`job_run_id`), as the cost dashboard does |
+| Job run duration is 0 in `job_run_timeline` | `run_duration_seconds` and the other job-level duration columns can be 0 for serverless runs | Use `timestampdiff(SECOND, min(period_start_time), max(period_end_time))`, as Lab 06 does. Task-level `execution_duration_seconds` is filled in |
+| Anyone can edit a dashboard or bundle files under `/Workspace/Shared` | Folder permissions are inherited and every user has CAN MANAGE on `Shared`; inherited permissions cannot be removed | Keep admin assets in a restricted folder (setup puts the dashboard in the admin's home) and share explicitly. Good governance discussion point |
+| Cost dashboard is empty | Billing lags by hours, or no pipeline/job matches the workshop names | Look at Day 1 on Day 2. It counts pipelines named `…trade_lakehouse…` and jobs named `…daily_trading_reporting…` or `…hytech_ws_…` |
 | Gold shows future dates | `deal_time_not_in_future` is warn-only | Intended discussion point: decide drop vs warn vs fail |
 | Workspace unreachable from the venue | IP access list / network | Use the admin-approved network; Triones checks the IP allow list |
 | Google Docs / Slides do not open | Blocked in mainland China without VPN | Use the PDF copies on the instructor laptop; labs are inside the workspace |

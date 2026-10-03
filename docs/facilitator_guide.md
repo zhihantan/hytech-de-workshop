@@ -9,6 +9,8 @@ difference between "most finished" and "most stuck". Split proposal in `docs/wor
 - [ ] Solution job ran once → `hytech_de_workshop.solutions` is populated (lab 07 and catch-up depend on it)
 - [ ] `llm_endpoint` set to a model served in Hytech's region (test `ai_query` in the SQL editor)
 - [ ] Genie Code skill visible at `/Workspace/.assistant/skills/hytech-de-conventions/`
+- [ ] Cost dashboard *Hytech DE Workshop - Cost and Health* published (setup task `cost_dashboard`)
+- [ ] CI/CD demo: service principal `hytech-ws-cicd`, its grants and a green `[cicd]` run (done on FEVM, 3 Oct). On the day, `cicd/deploy_as_service_principal.sh` creates and deletes its own temporary secret (`docs/cicd_demo.md`)
 - [ ] Slides as **PDF/PPTX on the loaner laptop** (Google Workspace is blocked in mainland China without VPN)
 - [ ] Dry run on Mon 12 Oct evening, ideally with one Hytech participant account
 
@@ -37,10 +39,10 @@ Only one drip run at a time (`max_concurrent_runs: 1`). Cancel the run to stop i
 
 | Time | Segment | Notes |
 |---|---|---|
-| 09:30 | **M5** Lakeflow Jobs (60) | **Start the drip.** Lab 04 (UI). First run fails on `mt5-uk-01` by design → Repair run (clear `fail_server`, keep `servers`). Explain *Succeeded with failures*. Demos: onboard `mt5-hk-01`; bad batch → DQ false branch; file-arrival trigger; **bundle deploy to prod as a service principal** (Hytech's "no direct prod access" priority). Catch-up: `04b_Jobs_Catch_Up` |
+| 09:30 | **M5** Lakeflow Jobs (60) | **Start the drip.** Lab 04 (UI). First run fails on `mt5-uk-01` by design → Repair run (clear `fail_server`, keep `servers`). Explain *Succeeded with failures*. Demos: onboard `mt5-hk-01`; bad batch → DQ false branch; file-arrival trigger; **bundle deploy `-t cicd` as a service principal** (`docs/cicd_demo.md`; Hytech's "no direct prod access" priority). Catch-up: `04b_Jobs_Catch_Up` |
 | 10:30 | **M6a** Genie Code (30) | Lab 05 ladder. Open the skill first (team conventions as code, Ray's priority). Good live prompt: L1 in Chinese |
-| 11:00 | **M6b** System tables (30) | Lab 06 via governed `ops` views. Billing lags by hours, so look at Day-1 runs. Tie back to Hytech's weekly cost review (Triones' team owns cost reporting). Teaser: Genie ZeroOps (private preview) |
-| 11:30 | **M6c** Recap + cert prep (30) | Map the two days to the Data Engineer Associate topics; 15-question quiz |
+| 11:00 | **M6b** System tables (30) | Open the *Hytech DE Workshop - Cost and Health* dashboard (link printed by setup task `cost_dashboard`), then Lab 06 via governed `ops` views. Billing lags by hours, so look at Day-1 runs. Tie back to Hytech's weekly cost review (Triones' team owns cost reporting). Teaser: Genie ZeroOps (private preview) |
+| 11:30 | **M6c** Recap + cert prep (30) | Map the two days to the exam sections; quiz `labs/08_Knowledge_Check.md` (answers and exam mapping: `docs/knowledge_check_answers.md`) |
 | 12:00 | **AI Functions** (30) | Lab 07. Tell the **"2,916万" story**: while building this lab the model turned $29,161 into "2,916万美元" (about $29M). Rule: compute numbers in SQL, make the model quote them, spot-check. `ai_translate` has no Chinese target → use `ai_query` |
 | 12:30 | Q&A (30) | Roadmap: Lakehouse//RT (beta) for the serving layer from the real-time POC; feedback form |
 
@@ -51,7 +53,7 @@ Only one drip run at a time (`max_concurrent_runs: 1`). Cancel the run to stop i
 3. New server onboarded live → green on the next run with zero code change.
 4. Bad batch → expectations drop rows → the job takes the alert branch on its own.
 5. Genie Code writes a gold MV from a Chinese prompt and follows the team skill.
-6. Each participant sees the cost of their own Day-1 pipeline.
+6. Each participant sees the cost of their own Day-1 pipeline, on the cost dashboard and in Lab 06.
 
 ## Recovery playbook
 
@@ -74,3 +76,6 @@ See `docs/troubleshooting.md`. Most common:
 | Bad batch (60%) | ✅ 162/3,229 dropped (5%) → false branch → DQ alert; summary excluded |
 | Participant flow | ✅ Lab 00 → own pipeline (catch-up files) → 04b job → simulated failure → repair → green |
 | Lab notebooks | ✅ 01, 02, 03b, 06, 07 executed headless; `ai_mask` masked phones/emails |
+| Cost dashboard | ✅ Published by setup task `cost_dashboard`; both pages render; view-only for the group, only admins manage it; counts runs with failed tasks |
+| Lab 06 job durations | ✅ Computed from the period timestamps (`run_duration_seconds` is 0 for serverless runs) |
+| CI/CD (`cicd` target) | ✅ Deployed and run by service principal `hytech-ws-cicd` over OAuth M2M: job and pipeline owned by and run as it, `users` CAN VIEW, 23 tables in `solutions_cicd` owned by it, green in ~3.5 min, temporary secret deleted |

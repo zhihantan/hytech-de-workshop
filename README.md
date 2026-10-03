@@ -30,7 +30,7 @@ end (see *Verified* below).
 1. Put the repo in the workspace (Git folder) or deploy from your laptop:
    ```bash
    databricks bundle deploy -t dev            # or -t prod for the shared deployment
-   databricks bundle run hytech_ws_setup      # catalog, synthetic data, ops views, Genie Code skill (~10 min)
+   databricks bundle run hytech_ws_setup      # catalog, synthetic data, ops views, cost dashboard, Genie Code skill (~10 min)
    databricks bundle run hytech_daily_trading_reporting_solution   # fills the solutions schema (~4 min)
    ```
    Set `workspace.host` in `databricks.yml` and the variables `catalog`, `llm_endpoint`, `participant_group`.
@@ -48,6 +48,8 @@ Full checklist for Hytech's admin: [`docs/setup_guide_triones.md`](docs/setup_gu
 | [`docs/setup_guide_triones.md`](docs/setup_guide_triones.md) | Workspace setup by the Hytech admin |
 | [`docs/participant_guide_zh.md`](docs/participant_guide_zh.md) | Participant quick start (Chinese) |
 | [`docs/troubleshooting.md`](docs/troubleshooting.md) | Known errors and fixes |
+| [`docs/cicd_demo.md`](docs/cicd_demo.md) | CI/CD demo: deploy as a service principal, GitLab template |
+| [`docs/knowledge_check_answers.md`](docs/knowledge_check_answers.md) | Quiz answers and exam-section mapping (instructors) |
 
 ## Labs
 
@@ -61,13 +63,16 @@ Full checklist for Hytech's admin: [`docs/setup_guide_triones.md`](docs/setup_gu
 | M6 Genie Code | `05_Genie_Code.md` prompt ladder + skill `genie_code/.assistant/skills/hytech-de-conventions` | — |
 | M6 System tables | `06_System_Tables` (via governed `ops` views) | `solutions/06_System_Tables` |
 | AI Functions | `07_AI_Functions` — `ai_query` (中文), `ai_classify`, `ai_mask`, sentiment | `solutions/07_AI_Functions` |
+| M6c Recap | `08_Knowledge_Check` — 15 questions + bonus, mapped to the exam guide | `docs/knowledge_check_answers.md` |
 
 ## Repository layout
 
 | Path | What |
 |---|---|
-| `databricks.yml`, `resources/` | Declarative Automation Bundle: setup job, drip producer, solution pipeline and job (dev/prod targets) |
-| `setup/` | `01`–`06` setup notebooks, `03_drip_producer`, `99_teardown` |
+| `databricks.yml`, `resources/` | Declarative Automation Bundle: setup job, drip producer, solution pipeline and job (`dev`, `prod` and `cicd` targets) |
+| `setup/` | `01`–`07` setup notebooks (`07` publishes the cost dashboard), `03_drip_producer`, `99_teardown` |
+| `dashboards/` | AI/BI cost & health dashboard (JSON) over the `ops` views |
+| `cicd/` | GitLab CI template (validate on merge requests, deploy as a service principal) and `deploy_as_service_principal.sh` for the live demo |
 | `src/hytech_workshop/` | Synthetic data generator: MT5 users/deals/positions as DMS CDC, app events, reference data, drip producer |
 | `solutions/pipeline/transformations/` | Reference pipeline (Python Auto Loader bronze + SQL silver/gold) |
 | `jobs/` | Job task notebooks: `dq_gate`, `reconcile_server`, `publish_daily_summary`, `notify`, `audit` |
@@ -97,5 +102,7 @@ Full checklist for Hytech's admin: [`docs/setup_guide_triones.md`](docs/setup_gu
   - bad batch → DQ alert branch
 - **Participant flow:** Lab 00 → own pipeline → catch-up job → simulated failure → repair → green.
 - **Notebooks:** labs 01, 02, 03b, 06 and 07 executed headless.
+- **Cost dashboard:** published by the setup job; both pages checked in the browser.
+- **CI/CD:** the `cicd` target deployed and run by a service principal over OAuth M2M, as `cicd/gitlab-ci.yml` does.
 
 Details: [`docs/facilitator_guide.md`](docs/facilitator_guide.md#verified-on-fevm-fe-vm-zh-serverless-ws-3-oct-2026).

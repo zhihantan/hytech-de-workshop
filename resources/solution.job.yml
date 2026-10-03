@@ -10,7 +10,7 @@ resources:
         - name: catalog
           default: ${var.catalog}
         - name: schema
-          default: solutions
+          default: ${var.solutions_schema}
         - name: dq_max_drop_pct
           default: "1.0"
         - name: servers

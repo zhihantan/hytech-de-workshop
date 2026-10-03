@@ -24,6 +24,7 @@
 | M4 | `03_pipeline/`（先读 README）+ `03b_Explore_Pipeline` | 声明式管道：bronze → silver（AUTO CDC、期望）→ gold |
 | M5 | `04_Lakeflow_Jobs.md` | 作业：if/else、for-each、Run if、修复运行、触发器 |
 | M6 | `05_Genie_Code.md` · `06_System_Tables` | Genie Code 提示词阶梯；成本 / 运行 / 血缘 |
+| M6c | `08_Knowledge_Check.md` | 知识测验：15 道单选题 + 加分题，对应认证考试大纲 |
 | AI | `07_AI_Functions` | `ai_query`（中文简报）、`ai_classify`、`ai_mask` |
 
 每个实验都有 `TODO`，答案在 `solutions/`。**跟不上没关系**：复制答案文件，继续下一步。

@@ -2,7 +2,8 @@
 #   databricks bundle validate                 # check config
 #   databricks bundle deploy  -t dev           # deploy to your dev copy (names prefixed with [dev <you>])
 #   databricks bundle run hytech_ws_setup      # build catalog + synthetic data
-#   databricks bundle deploy  -t prod          # CI/CD demo: shared, production-mode deployment
+#   databricks bundle deploy  -t prod          # shared workshop deployment (Hytech admin)
+#   databricks bundle deploy  -t cicd          # CI/CD pattern: deployed by a service principal (docs/cicd_demo.md)
 bundle:
   name: hytech-de-workshop
 
@@ -19,6 +20,15 @@ variables:
   llm_endpoint:
     description: Foundation Model API endpoint used by ai_query
     default: databricks-claude-sonnet-4-5
+  solutions_schema:
+    description: Schema for the solution pipeline and job tables (each deployment in a catalog needs its own)
+    default: solutions
+  warehouse_id:
+    description: SQL warehouse for the cost dashboard (empty = the setup job picks a serverless warehouse)
+    default: ""
+  cicd_service_principal:
+    description: Application ID of the service principal that deploys the cicd target (CI sets it from DATABRICKS_CLIENT_ID)
+    default: ""
 
 targets:
   dev:
@@ -26,12 +36,33 @@ targets:
     default: true
     workspace:
       host: https://fe-vm-zh-serverless-ws.cloud.databricks.com
+    variables:
+      warehouse_id: 01427ef1c429a676   # FEVM test workspace
 
+  # Shared workshop deployment. The root path is in /Workspace/Shared so the Hytech admin and both instructors
+  # can redeploy the same copy (one deployment state).
   prod:
     mode: production
     workspace:
       host: https://fe-vm-zh-serverless-ws.cloud.databricks.com
       root_path: /Workspace/Shared/.bundle/${bundle.name}/${bundle.target}
-    # In Hytech's CI/CD (GitLab) run production deployments as a service principal:
-    # run_as:
-    #   service_principal_name: <application-id>
+
+  # The production pattern for Hytech's GitLab CI/CD: a service principal deploys, owns and runs everything;
+  # nobody deploys by hand. The root path is the service principal's home folder, so only it (and admins) can
+  # change the deployed files. See cicd/gitlab-ci.yml and docs/cicd_demo.md.
+  cicd:
+    mode: production
+    workspace:
+      host: https://fe-vm-zh-serverless-ws.cloud.databricks.com
+      root_path: /Workspace/Users/${var.cicd_service_principal}/.bundle/${bundle.name}/${bundle.target}
+    run_as:
+      service_principal_name: ${var.cicd_service_principal}
+    presets:
+      name_prefix: "[cicd] "
+    variables:
+      solutions_schema: solutions_cicd
+    permissions:
+      - service_principal_name: ${var.cicd_service_principal}
+        level: CAN_MANAGE
+      - group_name: users
+        level: CAN_VIEW

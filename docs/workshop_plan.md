@@ -92,17 +92,17 @@ One instructor presents while the other circulates; swap per module. With 20 new
 
 | Time | Module | Concept | Demo | Hands-on lab | Output |
 |---|---|---|---|---|---|
-| 09:30 | **M5 Lakeflow Jobs** (60) | Tasks, DAGs, parameters, task values, if/else, for-each, Run-if, triggers, retries, repair, notifications; CI/CD with Declarative Automation Bundles | `databricks bundle deploy -t prod` running as a service principal | `labs/04_Lakeflow_Jobs`: build `daily_trading_reporting` in the UI. Run → the for-each fails on new server `mt5-hk-01` → instructor onboards it → **repair run** | Green job run plus a repaired run |
+| 09:30 | **M5 Lakeflow Jobs** (60) | Tasks, DAGs, parameters, task values, if/else, for-each, Run-if, triggers, retries, repair, notifications; CI/CD with Declarative Automation Bundles | `databricks bundle deploy -t cicd` as a service principal (`docs/cicd_demo.md`) | `labs/04_Lakeflow_Jobs`: build `daily_trading_reporting` in the UI. Run → the for-each fails on new server `mt5-hk-01` → instructor onboards it → **repair run** | Green job run plus a repaired run |
 | 10:30 | **M6a Genie Code** (30) | Agent mode, `@` context, skills, `/fix` | Install the `hytech-de-conventions` skill | `labs/05_Genie_Code` prompt ladder: new gold MV from a Chinese prompt, add expectations, fix a failed task | New MV in own pipeline |
-| 11:00 | **M6b System tables** (30) | billing.usage × list_prices, lakeflow timelines, lineage, query history; governed views | Pipeline cost dashboard | `labs/06_System_Tables`: your pipeline's $/day, task durations, lineage graph | Cost and health queries |
-| 11:30 | **M6c Recap + knowledge check + cert prep** (30) | Data Engineer Associate topic map | — | Quiz (15 questions) | — |
+| 11:00 | **M6b System tables** (30) | billing.usage × list_prices, lakeflow timelines, lineage, query history; governed views | Cost & health dashboard (published by setup) | `labs/06_System_Tables`: your pipeline's $/day, task durations, lineage graph | Cost and health queries |
+| 11:30 | **M6c Recap + knowledge check + cert prep** (30) | Data Engineer Associate topic map | — | `labs/08_Knowledge_Check` (15 questions + bonus) | — |
 | 12:00 | **AI Functions** (30) | Batch LLM in SQL; governance; cost | — | `labs/07_AI_Functions`: `ai_query` Chinese daily summary, `ai_classify` funding methods (regex vs AI), `ai_mask` on feedback text | Commentary table |
 | 12:30 | **Q&A Day 2** (30) | Roadmap: Genie ZeroOps (private preview), Lakehouse//RT (beta) | — | Feedback form | — |
 
 ### Key "wow" moments
 
 - **M3/M4:** the drip producer writes a MySQL change and it appears in silver on the next pipeline update, with SCD2 history visible.
-- **M4:** the same deals table built two ways (AUTO CDC MERGE vs append + corrections): compare the event-log metrics and explain cost scaling with *data changed, not data stored*.
+- **M4:** `DESCRIBE HISTORY` on the append-only deals table next to the MERGE-based corrections table, plus the POC cost numbers: cost scales with *data changed, not data stored*.
 - **M5:** onboard a new MT5 server live. The job fails, then the repair run goes green with no pipeline change, because the bronze glob is metadata-driven.
 - **M6:** Genie Code writes a mart from a Chinese prompt, and the Day-1 pipeline cost shows up to the cent.
 
@@ -122,7 +122,7 @@ One instructor presents while the other circulates; swap per module. With 20 new
 | 1 | Plan (this doc), README | `docs/`, `README.md` | ✅ |
 | 2 | Config + synthetic generators (MT5 CDC, app events, refs) | `src/hytech_workshop/` | ✅ |
 | 3 | Setup notebooks (catalog, data, participants, ops views, skill install) + teardown | `setup/` | ✅ |
-| 4 | Drip producer job | `setup/05_drip_producer.py` | ✅ |
+| 4 | Drip producer job | `setup/03_drip_producer.py` | ✅ |
 | 5 | Solution pipeline (SQL + Python) | `solutions/pipeline/` | ✅ |
 | 6 | Job task notebooks (DQ gate, reconcile, AI summary, notify, audit) | `jobs/` | ✅ |
 | 7 | Declarative Automation Bundle (setup, producer, solution pipeline and job; dev/prod) | `databricks.yml`, `resources/` | ✅ |
@@ -130,6 +130,9 @@ One instructor presents while the other circulates; swap per module. With 20 new
 | 9 | Genie Code skill + prompt ladder | `genie_code/` | ✅ |
 | 10 | Facilitator guide, participant guide (zh), Triones setup guide, troubleshooting | `docs/` | ✅ |
 | 11 | End-to-end test on `fe-vm-zh-serverless-ws` (setup → pipeline → job → repair → system tables → AI) | evidence in `docs/` | ✅ |
+| 12 | Knowledge check (15 questions + bonus) and answer key mapped to the exam guide | `labs/08_Knowledge_Check.md`, `docs/knowledge_check_answers.md` | ✅ |
+| 13 | Cost & health dashboard (AI/BI), published by the setup job | `dashboards/`, `setup/07_cost_dashboard.py` | ✅ |
+| 14 | CI/CD demo: `cicd` target (service principal), GitLab CI template, demo script | `databricks.yml`, `cicd/`, `docs/cicd_demo.md` | ✅ |
 
 **Test plan on FEVM**
 1. Deploy the bundle (dev) and run the setup job; check file counts and row counts.
@@ -169,5 +172,5 @@ One instructor presents while the other circulates; swap per module. With 20 new
 2. Is it OK to mirror MT5/DMS table shapes with synthetic data? Any names to avoid?
 3. Participant list and usernames. Will there be an account-level group (`de_workshop_sz`)?
 4. Can the `ops` schema expose system tables via filtered views? Who approves (Ray/Robin)?
-5. Do they want the CI/CD demo aligned to their GitLab setup (invite Robin to M5)?
+5. Do they want the CI/CD demo aligned to their GitLab setup (invite Robin to M5)? A GitLab template is ready: `cicd/gitlab-ci.yml`.
 6. What came back from Triones' poll of team questions?
