@@ -1,4 +1,8 @@
-"""Drip producer: keeps the landing zone alive during the labs.
+"""滴灌程序 (drip producer): 在讲习班期间保持落地区 (landing zone) 活跃。
+每 ``interval_seconds`` 为每个服务器的每个 MT5 表写入一个 DMS 风格的 CDC 文件
+(新成交、平仓、持仓标记、入出金、客户更新) 加上一个应用事件 JSON 文件。
+还可以登录全新的服务器 (先全量，然后 CDC) 并注入"坏批次"。
+Drip producer: keeps the landing zone alive during the labs.
 
 Every ``interval_seconds`` it writes one DMS-style CDC file per MT5 table per server (new trades,
 closes, position marks, deposits/withdrawals, client updates) plus one app-events JSON file.
@@ -25,12 +29,15 @@ from .storage import dms_cdc_name, load_state, save_state, write_parquet, write_
 
 
 def _now_us() -> int:
+    """获取当前时间的微秒表示。
+    Get current time in microseconds."""
     return int(time.time() * 1_000_000)
 
 
 def onboard_server(cfg: WorkshopConfig, state: dict, frames: dict, server: str, now: int, live: LivePrices,
                    log=print) -> None:
-    """DMS full load for a new server: 7 days of history, written as LOAD files at ``now``."""
+    """新服务器的 DMS 全量: 7 天历史记录，以 LOAD 文件形式写入在 ``now``。
+    DMS full load for a new server: 7 days of history, written as LOAD files at ``now``."""
     rng = server_rng(cfg.seed, server)
     pm = PriceModel(now - 8 * US_D, now + US_D, cfg.seed + 5).rescale_to(live.px, now)
     users = mt5.gen_users(rng, server, 300, now - 7 * US_D, now - US_H, start_seq=1, recent_share=0.4)
@@ -57,6 +64,8 @@ def onboard_server(cfg: WorkshopConfig, state: dict, frames: dict, server: str, 
 
 def _new_positions(rng, users: pd.DataFrame, k: int, t_from: int, t_to: int, live: LivePrices,
                    next_pos: int) -> pd.DataFrame:
+    """生成新开仓的持仓数据。
+    Generate position data for newly opened trades."""
     sym = symbols_df().set_index("symbol")
     act = users[users["Status"] == "ACTIVE"]
     if k == 0 or act.empty:
@@ -98,6 +107,8 @@ def _new_positions(rng, users: pd.DataFrame, k: int, t_from: int, t_to: int, liv
 
 
 def _mark_live(pos: pd.DataFrame, live: LivePrices) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """使用实时价格为持仓标记市值。
+    Mark-to-market positions using live prices."""
     mid = np.array([live.price(x) for x in pos["Symbol"]])
     px = mt5.round_to(mid - pos["_sign"].to_numpy() * pos["_spread"].to_numpy() / 2, pos["_digits"].to_numpy())
     rate = np.array([live.usd_per_quote(q) for q in pos["_quote"]])
@@ -108,6 +119,8 @@ def _mark_live(pos: pd.DataFrame, live: LivePrices) -> tuple[np.ndarray, np.ndar
 
 def tick_server(cfg: WorkshopConfig, state: dict, frames: dict, server: str, t_from: int, now: int,
                 live: LivePrices, rng, deals_per_tick: int, bad_pct: float) -> dict:
+    """在一个时间步长内为单个服务器生成新数据。
+    Generate new data for single server at one time step."""
     ctr = state["servers"][server]
     users = frames[f"users_{server}"]
     open_pos = frames[f"open_{server}"]
@@ -117,6 +130,7 @@ def tick_server(cfg: WorkshopConfig, state: dict, frames: dict, server: str, t_f
     due = open_pos[open_pos["close_us"] <= now]
     keep = open_pos[open_pos["close_us"] > now]
 
+    # 持仓 CDC: I (开仓) · U (5% 重新标记) · D (平仓)
     # positions CDC: I (opened) · U (5% re-marked) · D (closed)
     rows = []
     if len(new):
@@ -173,6 +187,7 @@ def tick_server(cfg: WorkshopConfig, state: dict, frames: dict, server: str, t_f
         d["Op"], d["cdc_ts"] = "I", np.maximum(d["Time"].to_numpy(), t_from) + 2 * US_S
         out["mt5_deals"] = d
 
+    # 用户 CDC: 少量登录 (LastAccess)、偶发杠杆变化、偶发新注册
     # users CDC: a few logins (LastAccess), occasional leverage change, occasional new registration
     urows = []
     for _ in range(int(rng.poisson(0.6))):
@@ -203,6 +218,8 @@ def tick_server(cfg: WorkshopConfig, state: dict, frames: dict, server: str, t_f
 def run_drip(cfg: WorkshopConfig, duration_minutes: float = 60, interval_seconds: float = 30,
              servers: list[str] | None = None, new_server: str | None = None, bad_batch_pct: float = 0.0,
              deals_per_tick: int = 24, events_per_tick: int = 150, max_ticks: int | None = None, log=print) -> dict:
+    """运行滴灌程序: 持续生成并写入 CDC 和事件数据。
+    Run drip producer: continuously generate and write CDC and event data."""
     state, frames = load_state(cfg.producer_root)
     live = LivePrices(state["prices"], seed=int(time.time()))
     rng = np.random.default_rng(int(time.time() * 1000) % (1 << 31))

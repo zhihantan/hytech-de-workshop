@@ -2,6 +2,8 @@
 # MAGIC %md
 # MAGIC # Job task · `publish_daily_summary` — AI 每日交易简报 (AI daily trading commentary)
 # MAGIC
+# MAGIC 仅在数据质量闸门通过时运行（`if/else` → `true`）。从黄金数据集收集该天的 KPI，并通过 AI Functions（`ai_query`）要求基础模型为交易台提供一份简体中文的短评。输出：`gold_daily_commentary`。
+# MAGIC
 # MAGIC Runs only when the DQ gate passes (`if/else` → `true`). Collects the day's KPIs from the gold marts and
 # MAGIC asks a Foundation Model (via `ai_query`) for a short commentary in Simplified Chinese for the dealing desk.
 # MAGIC Output: `gold_daily_commentary`.
@@ -43,6 +45,7 @@ exposure = [r.asDict() for r in spark.sql(f"""
   SELECT symbol, net_lots, round(net_notional_usd, 0) AS net_notional_usd
   FROM {cs}.gold_net_exposure_by_symbol ORDER BY abs(net_notional_usd) DESC LIMIT 5
 """).collect()]
+# 预计算模型应引用的每个数字：LLM 在算术和单位转换中不可靠。
 # Pre-compute every number the model should quote: LLMs are unreliable at arithmetic and unit conversion.
 totals["deposits_usd"] = round(sum(f["deposits_usd"] or 0 for f in funding))
 totals["withdrawals_usd"] = round(sum(f["withdrawals_usd"] or 0 for f in funding))

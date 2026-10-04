@@ -2,6 +2,8 @@
 # MAGIC %md
 # MAGIC # Job task · `audit` — 运行审计 (run audit, **Run if = All done**)
 # MAGIC
+# MAGIC 总是最后运行，无论上游发生了什么，并通过 Jobs API 将此运行的每个任务的状态记录在 `ops_job_audit` 中 — 方便进行操作评审的证据。
+# MAGIC
 # MAGIC Always runs last, whatever happened upstream, and records the state of every task of this run in
 # MAGIC `ops_job_audit` (via the Jobs API) — handy evidence for operations reviews.
 

@@ -2,6 +2,8 @@
 # MAGIC %md
 # MAGIC # 05 · 系统表治理视图 (Governed views over system tables)
 # MAGIC
+# MAGIC 学员不应需要直接访问账户范围的系统表。这些视图（由运行此笔记本的管理员拥有）**仅暴露此工作区**并删除敏感列，如 SQL 文本；学员在 `ops` schema 上获得 `SELECT` 权限（在 `01` 中授予）。视图使用所有者的权限运行。
+# MAGIC
 # MAGIC Participants should not need direct access to account-wide system tables. These views (owned by the
 # MAGIC admin who runs this notebook) expose **only this workspace** and drop sensitive columns such as SQL text;
 # MAGIC participants get `SELECT` on the `ops` schema (granted in `01`). Views run with the owner's rights.

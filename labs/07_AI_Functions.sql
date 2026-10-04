@@ -1,18 +1,22 @@
 -- Databricks notebook source
 -- MAGIC %md
 -- MAGIC # 07 · AI Functions — 在 SQL 里批量调用大模型 (batch LLM calls in SQL) · LAB
--- MAGIC 填写 `TODO`（答案在 `solutions/07_AI_Functions`）
 -- MAGIC
--- MAGIC | Function | 用途 |
+-- MAGIC 填写 `TODO`（答案在 `solutions/07_AI_Functions`）。
+-- MAGIC
+-- MAGIC | 函数<br>Function | 用途<br>Purpose |
 -- MAGIC |---|---|
--- MAGIC | `ai_query(endpoint, prompt)` | 任意提示词 → 文本（选择你的模型端点） |
--- MAGIC | `ai_classify(text, labels)` | 分类到给定标签 |
--- MAGIC | `ai_extract(text, labels)` | 抽取实体 |
--- MAGIC | `ai_mask(text, labels)` | 掩码敏感信息 |
--- MAGIC | `ai_analyze_sentiment(text)` | 情感分析 |
+-- MAGIC | `ai_query(endpoint, prompt)` | 任意提示词 → 文本（选择你的模型端点）<br>Any prompt → text (choose your model endpoint) |
+-- MAGIC | `ai_classify(text, labels)` | 分类到给定标签<br>Classify to given labels |
+-- MAGIC | `ai_extract(text, labels)` | 抽取实体<br>Extract entities |
+-- MAGIC | `ai_mask(text, labels)` | 掩码敏感信息<br>Mask sensitive information |
+-- MAGIC | `ai_analyze_sentiment(text)` | 情感分析<br>Analyze sentiment |
 -- MAGIC
 -- MAGIC ⚠️ `ai_translate` 目前**不支持**中文目标语言 → 中文请用 `ai_query`。
 -- MAGIC 本 lab 使用讲师的 `solutions` schema，保证大家的数据一样。
+-- MAGIC
+-- MAGIC ⚠️ `ai_translate` currently does **not** support Chinese as a target language → use `ai_query` for Chinese.
+-- MAGIC This lab uses the instructor's `solutions` schema to ensure everyone has the same data.
 
 -- COMMAND ----------
 
@@ -53,10 +57,14 @@ FROM kpi;
 
 -- MAGIC %md
 -- MAGIC ## 2 · `ai_classify` — 出入金方式：规则 vs AI (funding method: rules vs AI)
+-- MAGIC
 -- MAGIC `gold_funding_daily` 用正则从 MT5 备注里解析支付方式。看看规则解析不了的（`unknown`）和中文备注，AI 怎么分类：
+-- MAGIC
+-- MAGIC `gold_funding_daily` uses regex to parse payment methods from MT5 comments. See how AI classifies the comments that regex can't parse (`unknown`) and Chinese remarks:
 
 -- COMMAND ----------
 
+-- 比较规则和 AI 分类 (Compare rule-based vs AI classification)
 WITH c AS (
   SELECT DISTINCT comment,
     CASE
@@ -71,7 +79,7 @@ WITH c AS (
   WHERE deal_type = 'BALANCE'
 )
 SELECT comment, rule_method,
-       -- TODO 1 · classify the comment into: crypto, card, bank_transfer, e_wallet, internal_transfer, unknown
+       -- TODO 1 · 将备注分类为以下标签 (classify the comment into: crypto, card, bank_transfer, e_wallet, internal_transfer, unknown)
        ai_classify(comment, ARRAY(____)) AS ai_method
 FROM c
 WHERE rule_method = 'unknown' OR comment RLIKE '\\p{IsHan}'
@@ -80,17 +88,24 @@ LIMIT 25;
 -- COMMAND ----------
 
 -- MAGIC %md
--- MAGIC 讨论 (discuss): 只有“入金”两个字的备注，AI 也无法知道支付方式——AI 不是魔法，源系统数据质量依然重要。
+-- MAGIC ## 讨论 (Discuss)
+-- MAGIC
+-- MAGIC 只有”入金”两个字的备注，AI 也无法知道支付方式——AI 不是魔法，源系统数据质量依然重要。
 -- MAGIC 规则 + AI 结合：规则覆盖 95%，AI 处理长尾，并把 AI 结果写回表里（批量推理），而不是每次查询都调用。
+-- MAGIC
+-- MAGIC For a comment with just “deposit” in Chinese, AI also cannot know the payment method — AI is not magic; source system data quality still matters.
+-- MAGIC Hybrid approach: rules cover 95%, AI handles the tail, and materialize AI results in a table (batch inference) rather than calling on every query.
 
 -- COMMAND ----------
 
--- MAGIC %md ## 3 · `ai_mask` — 反馈文本里的个人信息 (PII in free-text feedback)
+-- MAGIC %md
+-- MAGIC ## 3 · `ai_mask` — 反馈文本里的个人信息 (PII in free-text feedback)
 
 -- COMMAND ----------
 
+-- 掩码个人信息 (Mask PII)
 SELECT feedback_text,
-       -- TODO 2 · mask emails, phone numbers and person names
+       -- TODO 2 · 掩码电子邮件、电话号码和人名 (mask emails, phone numbers and person names)
        ai_mask(feedback_text, ARRAY(____)) AS masked_text
 FROM (SELECT DISTINCT feedback_text FROM silver_app_events WHERE event = 'app_feedback')
 WHERE feedback_text RLIKE '@|\\+[0-9]'
@@ -113,13 +128,18 @@ LIMIT 20;
 
 -- MAGIC %md
 -- MAGIC ## 5 · 批量推理写入你的 schema (Batch inference into a table)
+-- MAGIC
 -- MAGIC 生产中：AI 结果**物化**到表里（一次计算、多次查询），通过 Unity AI Gateway 控制模型、速率与成本。
+-- MAGIC
+-- MAGIC In production: AI results are **materialized** into a table (compute once, query many times), with model, rate, and cost control via Unity AI Gateway.
 
 -- COMMAND ----------
 
+-- 定义 schema (Define my schema)
 DECLARE OR REPLACE VARIABLE my_schema STRING DEFAULT
   'u_' || regexp_replace(lower(split_part(current_user(), '@', 1)), '[^a-z0-9]', '_');
 
+-- 创建富化反馈表 (Create enriched feedback table)
 CREATE OR REPLACE TABLE IDENTIFIER('hytech_de_workshop.' || my_schema || '.feedback_enriched')
 COMMENT 'App feedback with AI topic, sentiment and masked text (batch inference, lab 07)'
 AS SELECT feedback_text, rating,
@@ -127,7 +147,7 @@ AS SELECT feedback_text, rating,
                                            'kyc_onboarding', 'deposit_issue', 'praise')) AS topic,
           ai_analyze_sentiment(feedback_text) AS sentiment,
           ai_mask(feedback_text, ARRAY('email', 'phone number')) AS feedback_masked
-   FROM (SELECT DISTINCT feedback_text, rating FROM silver_app_events WHERE event = 'app_feedback' LIMIT 200);  -- keep the lab fast/cheap
+   FROM (SELECT DISTINCT feedback_text, rating FROM silver_app_events WHERE event = 'app_feedback' LIMIT 200);  -- 保持 lab 运行快速且便宜 (keep the lab fast/cheap)
 
 SELECT topic, sentiment, count(*) AS n
 FROM IDENTIFIER('hytech_de_workshop.' || my_schema || '.feedback_enriched')

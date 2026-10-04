@@ -2,12 +2,17 @@
 # MAGIC %md
 # MAGIC # Job task · `dq_gate` — 数据质量闸门 (data-quality gate)
 # MAGIC
+# MAGIC 读取管道**事件日志**获取最新更新，计算期望删除了多少 `silver_mt5_deals` 行，将每个期望的结果存储在 `ops_dq_results` 中，并为下游 `if/else` 条件任务发布**任务值**：
+# MAGIC
+# MAGIC * `{{tasks.dq_gate.values.dq_drop_pct}}` — 此更新中删除的成交行百分比
+# MAGIC * `{{tasks.dq_gate.values.dq_dropped_rows}}` — 删除的成交行数
+# MAGIC
 # MAGIC Reads the pipeline **event log** for the latest update, computes how many `silver_mt5_deals` rows the
 # MAGIC expectations dropped, stores per-expectation results in `ops_dq_results`, and publishes **task values**
 # MAGIC for the downstream `if/else` condition task:
 # MAGIC
 # MAGIC * `{{tasks.dq_gate.values.dq_drop_pct}}` — % of deal rows dropped in this update
-# MAGIC * `{{tasks.dq_gate.values.dq_dropped_rows}}`
+# MAGIC * `{{tasks.dq_gate.values.dq_dropped_rows}}` — number of deal rows dropped
 
 # COMMAND ----------
 

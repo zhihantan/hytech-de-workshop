@@ -1,4 +1,5 @@
-"""Synthetic (fake) client identities. Emails use RFC 2606 reserved domains only."""
+"""合成（虚假）客户身份。电子邮件仅使用 RFC 2606 保留域。
+Synthetic (fake) client identities. Emails use RFC 2606 reserved domains only."""
 
 from __future__ import annotations
 
@@ -85,6 +86,8 @@ EMAIL_DOMAINS = ["example.com", "example.net", "example.org", "mail.example.com"
 
 
 def fake_identities(rng: np.random.Generator, countries: np.ndarray) -> dict[str, np.ndarray]:
+    """为给定国家生成合成客户身份。
+    Generate synthetic client identities for given countries."""
     n = len(countries)
     first = np.empty(n, dtype=object)
     last = np.empty(n, dtype=object)

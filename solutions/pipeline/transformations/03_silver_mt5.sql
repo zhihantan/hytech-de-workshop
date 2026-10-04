@@ -1,5 +1,10 @@
 -- ===========================================================================
 -- Silver · MT5
+-- 经验法则（来自 Hytech 实时 POC）：
+--   * 可变实体（用户、持仓）-> AUTO CDC（按键 MERGE）
+--   * 不可变事实（成交，~99.9% 插入）-> 只追加流式表
+--     + 用于稀有更正/删除的小型 AUTO CDC 表。
+--   追加成本与**更改的**数据规模成正比；大表 MERGE 与**存储的**数据规模成正比。
 -- Rule of thumb (from Hytech's real-time POC):
 --   * Mutable entities (users, positions)  -> AUTO CDC  (MERGE by key)
 --   * Immutable facts (deals, ~99.9% inserts) -> APPEND-ONLY streaming table
@@ -9,6 +14,7 @@
 -- ===========================================================================
 
 -- ---------------------------------------------------------------------------
+-- silver_mt5_users：AUTO CDC，SCD Type 2（组别 / 杠杆 / IB / 状态的历史）
 -- silver_mt5_users : AUTO CDC, SCD Type 2 (history of group / leverage / IB / status)
 -- ---------------------------------------------------------------------------
 CREATE OR REFRESH STREAMING TABLE silver_mt5_users
@@ -47,6 +53,7 @@ STORED AS SCD TYPE 2
 TRACK HISTORY ON mt_group, account_type, leverage, ib_login, status;
 
 -- ---------------------------------------------------------------------------
+-- silver_mt5_positions：AUTO CDC，SCD Type 1（仅当前持仓）
 -- silver_mt5_positions : AUTO CDC, SCD Type 1 (current open positions only)
 -- ---------------------------------------------------------------------------
 CREATE OR REFRESH STREAMING TABLE silver_mt5_positions
@@ -83,6 +90,7 @@ COLUMNS * EXCEPT (_op)
 STORED AS SCD TYPE 1;
 
 -- ---------------------------------------------------------------------------
+-- silver_mt5_deals：只追加 + 数据质量期望
 -- silver_mt5_deals : APPEND-ONLY + data-quality expectations
 -- ---------------------------------------------------------------------------
 CREATE OR REFRESH STREAMING TABLE silver_mt5_deals (
@@ -123,6 +131,8 @@ FROM STREAM(bronze_mt5_deals)
 WHERE Op = 'I';
 
 -- ---------------------------------------------------------------------------
+-- silver_mt5_deal_corrections：稀有的做市商修正 (U) / 删除 (D)
+-- 小表，所以 MERGE 成本低。
 -- silver_mt5_deal_corrections : the rare dealer corrections (U) / deletions (D)
 -- Tiny table, so its MERGE is cheap.
 -- ---------------------------------------------------------------------------
@@ -150,6 +160,7 @@ SEQUENCE BY cdc_ts
 STORED AS SCD TYPE 1;
 
 -- ---------------------------------------------------------------------------
+-- silver_mt5_deals_current：已应用修正的成交，已移除删除
 -- silver_mt5_deals_current : deals with corrections applied, deletions removed
 -- ---------------------------------------------------------------------------
 CREATE OR REFRESH MATERIALIZED VIEW silver_mt5_deals_current

@@ -1,15 +1,24 @@
 -- Databricks notebook source
 -- MAGIC %md
 -- MAGIC # 06 · 系统表 (System tables) — 成本、运行情况、血缘 (cost, runs, lineage) · LAB
--- MAGIC 填写 `TODO`（答案在 `solutions/06_System_Tables`）
+-- MAGIC
+-- MAGIC 填写 `TODO`（答案在 `solutions/06_System_Tables`）。
 -- MAGIC
 -- MAGIC 通过 `hytech_de_workshop.ops` 下的**治理视图**访问系统表：只包含本工作区的数据，SQL 文本已移除，其他人的身份被掩码。
 -- MAGIC 这本身就是一个治理实践：分析师不需要直接访问整个账户的系统表。
 -- MAGIC
 -- MAGIC ⚠️ 账单数据（billing）有数小时延迟：今天的运行可能明天早上才完整出现。
+-- MAGIC
+-- MAGIC Fill in the `TODO` sections (answers in `solutions/06_System_Tables`).
+-- MAGIC
+-- MAGIC Access system tables through **governance views** under `hytech_de_workshop.ops`: only your workspace's data, SQL text removed, others' identities masked.
+-- MAGIC This is a governance practice: analysts don't need direct access to the entire account's system tables.
+-- MAGIC
+-- MAGIC ⚠️ Billing data has a few hours lag: today's runs may not appear completely until tomorrow morning.
 
 -- COMMAND ----------
 
+-- 定义变量：我的 schema、管道和作业 (Define variables: my schema, pipeline, job)
 DECLARE OR REPLACE VARIABLE my_schema STRING DEFAULT
   'u_' || regexp_replace(lower(split_part(current_user(), '@', 1)), '[^a-z0-9]', '_');
 DECLARE OR REPLACE VARIABLE my_pipeline_id STRING;
@@ -18,7 +27,7 @@ DECLARE OR REPLACE VARIABLE my_job_id STRING;
 USE CATALOG hytech_de_workshop;
 USE SCHEMA ops;
 
--- Your pipeline (lab 03) and job (lab 04), found by owner + name
+-- 查找你的管道（Lab 03）和作业（Lab 04），按所有者和名称查找 (Find your pipeline (lab 03) and job (lab 04) by owner + name)
 SET VAR my_pipeline_id = (
   SELECT max_by(pipeline_id, create_time) FROM pipelines
   WHERE created_by = current_user() AND name LIKE 'trade_lakehouse%' AND delete_time IS NULL);
@@ -88,11 +97,11 @@ ORDER BY avg_exec_seconds DESC;
 SELECT u.usage_date,
        u.billing_origin_product,
        round(sum(u.usage_quantity), 3)                        AS dbus,
-       -- TODO 1 · cost = DBUs × list price (p.pricing.default)
+       -- TODO 1 · 成本 = DBU × 标价 (cost = DBUs × list price (p.pricing.default))
        round(sum(____), 2)                                    AS list_cost_usd
 FROM billing_usage u
 JOIN list_prices p
-  -- TODO 2 · join usage to its price by SKU name
+  -- TODO 2 · 按 SKU 名称将用量与价格联接 (join usage to its price by SKU name)
   ON ____
  AND u.usage_start_time >= p.price_start_time
  AND (p.price_end_time IS NULL OR u.usage_start_time < p.price_end_time)
@@ -103,7 +112,7 @@ ORDER BY u.usage_date, u.billing_origin_product;
 
 -- COMMAND ----------
 
--- Cost per job run (which run was the most expensive?)
+-- 每次作业运行的成本（哪次运行最贵？） (Cost per job run (which run was the most expensive?))
 SELECT u.usage_metadata.job_run_id                          AS job_run_id,
        round(sum(u.usage_quantity), 3)                      AS dbus,
        round(sum(u.usage_quantity * p.pricing.default), 3)  AS list_cost_usd
@@ -127,7 +136,7 @@ SELECT DISTINCT
        target_table_full_name                       AS target,
        entity_type
 FROM table_lineage
--- TODO 3 · keep lineage edges where your schema is the source or the target
+-- TODO 3 · 保留你的 schema 是源或目标的血缘边 (keep lineage edges where your schema is the source or the target)
 WHERE ____
 ORDER BY target, source;
 

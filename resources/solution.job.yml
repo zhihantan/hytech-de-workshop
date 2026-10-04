@@ -3,7 +3,9 @@ resources:
     hytech_daily_trading_reporting_solution:
       name: hytech_daily_trading_reporting_solution
       description: >-
-        Reference solution for lab 04: pipeline -> DQ gate (if/else) -> AI daily summary | DQ alert;
+        实验 04 的参考答案作业：管道 -> 数据质量门（if/else）-> AI 日报 | 数据质量告警；
+        服务器循环任务对账；运行条件告警和审计。
+        Reference solution job for lab 04: pipeline -> DQ gate (if/else) -> AI daily summary | DQ alert;
         for-each server reconciliation; Run-if alerting and audit.
       max_concurrent_runs: 1
       parameters:

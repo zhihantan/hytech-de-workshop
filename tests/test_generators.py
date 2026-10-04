@@ -1,4 +1,5 @@
-"""Fast local checks for the synthetic data generator (pip install pandas numpy pyarrow pytest)."""
+"""合成数据生成器的快速本地检查 (pip install pandas numpy pyarrow pytest)。
+Fast local checks for the synthetic data generator (pip install pandas numpy pyarrow pytest)."""
 
 import glob
 import os

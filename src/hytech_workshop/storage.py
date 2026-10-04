@@ -1,4 +1,5 @@
-"""File writers for UC Volumes (or local paths in tests) and producer state."""
+"""为 UC Volumes (或测试中的本地路径) 和生产者状态编写文件。
+File writers for UC Volumes (or local paths in tests) and producer state."""
 
 from __future__ import annotations
 
@@ -19,7 +20,8 @@ def _atomic_copy(local_path: str, dest: str) -> None:
 
 
 def write_parquet(table: pa.Table, dest: str) -> None:
-    """Write locally then copy, so FUSE-mounted Volumes only ever see whole files."""
+    """本地写入后复制，以便 FUSE 挂载的 Volumes 只能看到完整文件。
+    Write locally then copy, so FUSE-mounted Volumes only ever see whole files."""
     with tempfile.TemporaryDirectory() as d:
         tmp = os.path.join(d, "f.parquet")
         pq.write_table(table, tmp, compression="snappy")
@@ -39,7 +41,8 @@ def write_csv(df: pd.DataFrame, dest: str) -> None:
 
 
 def dms_cdc_name(ts_us: int) -> str:
-    """AWS DMS CDC file name: yyyymmdd-hhmmssfff.parquet"""
+    """AWS DMS CDC 文件名: yyyymmdd-hhmmssfff.parquet
+    AWS DMS CDC file name: yyyymmdd-hhmmssfff.parquet"""
     dt = datetime.fromtimestamp(ts_us / 1_000_000, tz=timezone.utc)
     return dt.strftime("%Y%m%d-%H%M%S") + f"{dt.microsecond // 1000:03d}.parquet"
 

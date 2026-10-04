@@ -1,5 +1,7 @@
 # ===========================================================================
 # Bronze · MT5 CDC files from AWS DMS (Auto Loader)
+# 一个函数为每个 MT5 表创建一个流式表。路径模式 `mt5/*/<table>/` 会选择每个服务器 —
+# 包括稍后加入的服务器 — 无需修改管道（元数据驱动的数据接入）。
 # One function creates one streaming table per MT5 table. The path glob
 # `mt5/*/<table>/` picks up every server — including servers onboarded later —
 # without changing the pipeline (metadata-driven ingestion).

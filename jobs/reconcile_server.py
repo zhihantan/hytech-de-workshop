@@ -2,9 +2,15 @@
 # MAGIC %md
 # MAGIC # Job task · `reconcile_server` — 按服务器对账 (per-server completeness check, runs inside **for-each**)
 # MAGIC
+# MAGIC 对于一个 MT5 服务器（`{{input}}` 来自 for-each 循环任务）：
+# MAGIC 1. DMS 数据接入文件夹必须存在（若该服务器的 DMS 任务尚未启动，则失败），以及
+# MAGIC 2. bronze 中的每一个**有效**插入成交都必须在 silver 中（期望仅删除无效的）。
+# MAGIC
 # MAGIC For one MT5 server (`{{input}}` from the for-each task):
 # MAGIC 1. the DMS landing folder must exist (fails for a server whose DMS task has not started yet), and
 # MAGIC 2. every **valid** inserted deal in bronze must be in silver (expectations dropped only the invalid ones).
+# MAGIC
+# MAGIC 结果附加到 `ops_reconciliation`。实验助手：作业参数 `fail_server` 使一次迭代失败，以便您可以练习**修复运行**。
 # MAGIC
 # MAGIC Results are appended to `ops_reconciliation`. Lab helper: job parameter `fail_server` makes one iteration fail
 # MAGIC on purpose so you can practise **Repair run**.
@@ -29,7 +35,7 @@ if server == dbutils.widgets.get("fail_server").strip():
 
 try:
     files = [f for f in dbutils.fs.ls(landing) if f.name.endswith(".parquet")]
-except Exception:  # noqa: BLE001 - folder does not exist yet
+except Exception:  # noqa: BLE001 - 文件夹还不存在 (folder does not exist yet)
     files = []
 if not files:
     raise RuntimeError(f"[{server}] no DMS files in {landing} — has the DMS task for this server started?")

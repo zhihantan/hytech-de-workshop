@@ -2,12 +2,20 @@
 # MAGIC %md
 # MAGIC # 02 · 生成模拟数据 (Generate the synthetic landing zone)
 # MAGIC
+# MAGIC 仅写入**合成**（虚假）数据 — 无真实客户数据：
+# MAGIC * `landing/mt5/<server>/<table>/` — AWS DMS 布局：`LOAD00000001.parquet`（全量）+ 小时级变更数据 (CDC) 文件 `yyyymmdd-hhmmssfff.parquet`，包含 `Op`（I/U/D）和 `cdc_ts`，用于 `mt5_users`、`mt5_deals`、`mt5_positions`
+# MAGIC * `landing/app_events/<date>/events-*.json` — 传感器风格 JSON，带有 schema 漂移和约 1% 重复
+# MAGIC * `ref/{symbols,ib_hierarchy,servers,fx_rates}/*.csv`
+# MAGIC * `producer/` — 滴灌程序 (drip producer) 状态（`03_drip_producer`）
+# MAGIC
 # MAGIC Writes **synthetic** (fake) data only — no real client data:
 # MAGIC * `landing/mt5/<server>/<table>/` — AWS DMS layout: `LOAD00000001.parquet` (full load) + hourly CDC files
 # MAGIC   `yyyymmdd-hhmmssfff.parquet` with `Op` (I/U/D) and `cdc_ts`, for `mt5_users`, `mt5_deals`, `mt5_positions`
 # MAGIC * `landing/app_events/<date>/events-*.json` — Sensors-style JSON with schema drift and ~1% duplicates
 # MAGIC * `ref/{symbols,ib_hierarchy,servers,fx_rates}/*.csv`
 # MAGIC * `producer/` — state for the drip producer (`03_drip_producer`)
+# MAGIC
+# MAGIC 注意：如果数据接入区已有数据，除非 `reset=true`（会先删除数据），否则不会执行任何操作。仅在学员开始其管道**之前**重置（他们的流式检查点指向这些文件）。
 # MAGIC
 # MAGIC ⚠️ If the landing zone already has data, nothing happens unless `reset=true`, which deletes it first.
 # MAGIC Only reset **before** participants start their pipelines (their streaming checkpoints point at these files).
@@ -60,7 +68,8 @@ with open(f"{cfg.producer_root}/manifest.json", "w") as fh:
 
 # COMMAND ----------
 
-# MAGIC %md ### 校验 (Verify): files and rows per server and table
+# MAGIC %md
+# MAGIC ### 校验 (Verify): files and rows per server and table
 
 # COMMAND ----------
 

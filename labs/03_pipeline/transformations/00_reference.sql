@@ -1,5 +1,7 @@
 -- ===========================================================================
 -- Reference data · 参考数据
+-- 由业务部门维护的小型 CSV 文件。物化视图在每次更新时重新读取它们，
+-- 所以编辑后的 CSV 会在下次运行时生效。
 -- Small CSV files maintained by the business. Materialized views re-read them
 -- on every update, so an edited CSV shows up on the next run.
 -- ===========================================================================

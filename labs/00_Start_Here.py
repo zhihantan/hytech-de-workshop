@@ -51,8 +51,9 @@ display(spark.sql(f"DESCRIBE SCHEMA EXTENDED {catalog}.{my_schema}"))
 # MAGIC %md
 # MAGIC ## 2 · 浏览落地区 — Explore the landing zone
 # MAGIC
-# MAGIC DMS 的目录结构：`mt5/<server>/<table>/`，里面有一个全量文件 `LOAD00000001.parquet`，以及按时间命名的增量 CDC 文件
-# MAGIC `yyyymmdd-hhmmssfff.parquet`。每一行都有 `Op`（I 插入 / U 更新 / D 删除）和 `cdc_ts`（提交时间）。
+# MAGIC DMS 的目录结构：`mt5/<server>/<table>/`，里面有一个全量文件 `LOAD00000001.parquet`，以及按时间命名的增量 CDC 文件 `yyyymmdd-hhmmssfff.parquet`。每一行都有 `Op`（I 插入 / U 更新 / D 删除）和 `cdc_ts`（提交时间）。
+# MAGIC
+# MAGIC DMS directory structure: `mt5/<server>/<table>/` contains one full load file `LOAD00000001.parquet` and time-stamped incremental CDC files `yyyymmdd-hhmmssfff.parquet`. Each row has `Op` (I = insert / U = update / D = delete) and `cdc_ts` (commit time).
 
 # COMMAND ----------
 
@@ -80,23 +81,24 @@ display(spark.read.parquet(cdc_file).groupBy("Op").count())
 # MAGIC %md
 # MAGIC **MT5 字段速查 (field cheat sheet)**
 # MAGIC
-# MAGIC | 字段 | 含义 |
+# MAGIC | 字段 (Field) | 含义 (Meaning) |
 # MAGIC |---|---|
-# MAGIC | `Action` | 0 = BUY, 1 = SELL, 2 = BALANCE（入金 `Profit > 0` / 出金 `Profit < 0`） |
-# MAGIC | `Entry` | 0 = IN 开仓, 1 = OUT 平仓（已实现盈亏只在 OUT 上） |
-# MAGIC | `Volume` | 1/10000 手 → `lots = Volume / 10000` |
-# MAGIC | `Profit` · `Commission` · `Storage` | 客户盈亏 · 佣金 · 隔夜利息（美元） |
-# MAGIC | `RateProfit` | 报价货币 → 美元的汇率；名义金额 = lots × ContractSize × Price × RateProfit |
-# MAGIC | `Group` | `real\<品牌>\<账户类型>-USD`，例如 `real\Apex\RAW-USD` |
-# MAGIC | `Agent` | 介绍经纪人 IB 的 login（0 = 无） |
+# MAGIC | `Action` | 0 = BUY, 1 = SELL, 2 = BALANCE（入金 `Profit > 0` / 出金 `Profit < 0`）<br>0 = BUY, 1 = SELL, 2 = BALANCE (deposit `Profit > 0` / withdrawal `Profit < 0`) |
+# MAGIC | `Entry` | 0 = IN 开仓, 1 = OUT 平仓（已实现盈亏只在 OUT 上）<br>0 = IN open, 1 = OUT close (realized P&L only on OUT) |
+# MAGIC | `Volume` | 1/10000 手 → `lots = Volume / 10000`<br>1/10000 lot → `lots = Volume / 10000` |
+# MAGIC | `Profit` · `Commission` · `Storage` | 客户盈亏 · 佣金 · 隔夜利息（美元）<br>Client P&L · commission · overnight interest (USD) |
+# MAGIC | `RateProfit` | 报价货币 → 美元的汇率；名义金额 = lots × ContractSize × Price × RateProfit<br>Quote currency → USD exchange rate; notional = lots × ContractSize × Price × RateProfit |
+# MAGIC | `Group` | `real\<品牌>\<账户类型>-USD`，例如 `real\Apex\RAW-USD`<br>`real\<brand>\<account-type>-USD`, e.g. `real\Apex\RAW-USD` |
+# MAGIC | `Agent` | 介绍经纪人 IB 的 login（0 = 无）<br>IB (introducing broker) login (0 = none) |
 
 # COMMAND ----------
 
 # MAGIC %md
 # MAGIC ## 3 · 复制实验文件到你的目录 — Copy the lab files to your home folder
 # MAGIC
-# MAGIC 你需要一份**可编辑**的副本（尤其是 `03_pipeline/`）。下面的单元格会把 `labs/` 和作业用的 `jobs/` 复制到
-# MAGIC `/Users/<you>/hytech_de_lab/`（已存在的文件不会被覆盖）。也可以在左侧工作区右键 **Clone**。
+# MAGIC 你需要一份**可编辑**的副本（尤其是 `03_pipeline/`）。下面的单元格会把 `labs/` 和作业用的 `jobs/` 复制到 `/Users/<you>/hytech_de_lab/`（已存在的文件不会被覆盖）。也可以在左侧工作区右键 **Clone**。
+# MAGIC
+# MAGIC You need an **editable** copy (especially `03_pipeline/`). The cell below copies `labs/` and job task notebooks `jobs/` to `/Users/<you>/hytech_de_lab/` (existing files are not overwritten). Alternatively, right-click **Clone** in the left sidebar.
 
 # COMMAND ----------
 
@@ -127,14 +129,14 @@ def copy_tree(src: str, dst: str) -> None:
                 exp = w.workspace.export(obj.path, format=ExportFormat.AUTO)
                 w.workspace.import_(target, content=exp.content, format=ImportFormat.AUTO)
                 print("  file    ", target)
-        except Exception as e:  # noqa: BLE001 - already exists -> keep the participant's version
+        except Exception as e:  # noqa: BLE001 - 已存在，保留学员版本 (already exists, keep the participant's version)
             if "exists" not in str(e).lower():
                 raise
             print("  (kept existing)", target)
 
 
-src_labs = ws_path(os.getcwd())                      # <repo>/labs
-src_jobs = src_labs.rsplit("/", 1)[0] + "/jobs"       # <repo>/jobs (task notebooks for lab 04)
+src_labs = ws_path(os.getcwd())                      # <repo>/labs (<repo>/labs)
+src_jobs = src_labs.rsplit("/", 1)[0] + "/jobs"       # <repo>/jobs 包含 lab 04 的任务 notebook (task notebooks for lab 04)
 dst_labs = f"/Users/{me}/hytech_de_lab"
 if src_labs.rstrip("/") == dst_labs:
     print("You are already running from your own copy.")

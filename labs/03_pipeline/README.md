@@ -1,41 +1,63 @@
 # Lab 03 · 交易湖仓管道 (Trade lakehouse pipeline) — Lakeflow Spark Declarative Pipelines
 
-**目标 (Goal):** build bronze → silver → gold for the MT5 data in **your own schema** `u_<name>`.
+**目标 (Goal)：** 在你自己的 schema `u_<name>` 中为 MT5 数据构建 bronze → silver → gold 数据分层。
+
+Build bronze → silver → gold for the MT5 data in **your own schema** `u_<name>`.
 
 ## 1 · 创建管道 (Create the pipeline) — Lakeflow Pipelines Editor
 
-1. Copy this folder to your home first (`labs/00_Start_Here` → step 4 does it for you):
+1. 首先将此文件夹复制到你的主目录（`labs/00_Start_Here` → 第 4 步会为你完成）：`/Users/<you>/hytech_de_lab/03_pipeline/`
+
+   Copy this folder to your home first (`labs/00_Start_Here` → step 4 does it for you):
    `/Users/<you>/hytech_de_lab/03_pipeline/`
-2. **New → ETL pipeline** (Lakeflow Pipelines Editor). Choose **Add existing assets** and set:
-   | Setting | Value |
+
+2. **New → ETL pipeline**（Lakeflow 管道编辑器）。选择 **Add existing assets** 并设置：
+
+   **New → ETL pipeline** (Lakeflow Pipelines Editor). Choose **Add existing assets** and set:
+
+   | 设置 (Setting) | 值 (Value) |
    |---|---|
-   | Pipeline name | `trade_lakehouse_<your_name>` |
-   | Root folder | `/Users/<you>/hytech_de_lab/03_pipeline` |
-   | Source code | `/Users/<you>/hytech_de_lab/03_pipeline/transformations` |
-   | Default catalog / schema | `hytech_de_workshop` / `u_<your_name>` |
-3. **Settings → Configuration** — add two key/value pairs:
-   | Key | Value |
+   | 管道名称 (Pipeline name) | `trade_lakehouse_<your_name>` |
+   | 根文件夹 (Root folder) | `/Users/<you>/hytech_de_lab/03_pipeline` |
+   | 源代码 (Source code) | `/Users/<you>/hytech_de_lab/03_pipeline/transformations` |
+   | 默认 catalog / schema (Default catalog / schema) | `hytech_de_workshop` / `u_<your_name>` |
+
+3. **Settings → Configuration** — 添加两个键值对：
+
+   **Settings → Configuration** — add two key/value pairs:
+   | 键 (Key) | 值 (Value) |
    |---|---|
    | `landing_root` | `/Volumes/hytech_de_workshop/raw/landing` |
    | `ref_root` | `/Volumes/hytech_de_workshop/raw/ref` |
-4. **Settings → Advanced → Publish event log to metastore**: on, table name `pipeline_event_log`
+
+4. **Settings → Advanced → Publish event log to metastore**：打开，表名 `pipeline_event_log`（catalog `hytech_de_workshop`，schema `u_<your_name>`）。Lab 04 中的作业会读取它。
+
+   **Settings → Advanced → Publish event log to metastore**: on, table name `pipeline_event_log`
    (catalog `hytech_de_workshop`, schema `u_<your_name>`). The job in lab 04 reads it.
-5. Compute: **Serverless**. Pipeline mode: **Triggered**.
+
+5. 计算资源（Compute）：**Serverless**。管道模式（Pipeline mode）：**Triggered**。
+
+   Compute: **Serverless**. Pipeline mode: **Triggered**.
 
 ## 2 · 完成 TODO (Fill in the TODOs)
 
-| TODO | File | What |
+| TODO | 文件 (File) | 内容 (What) |
 |---|---|---|
-| 1a, 1b | `01_bronze_mt5.py` | Auto Loader format; extract `server_id` from the file path |
-| 2 | `03_silver_mt5.sql` | AUTO CDC keys / delete / sequence / SCD2 / tracked columns for users |
-| 3a, 3b | `03_silver_mt5.sql` | Two expectations for invalid trades |
-| 4 | `03_silver_mt5.sql` | Append-only filter for deals |
-| 5 | `05_gold_reporting.sql` | USD notional and client P&L |
+| 1a, 1b | `01_bronze_mt5.py` | Auto Loader 格式；从文件路径中提取 `server_id`<br>Auto Loader format; extract `server_id` from the file path |
+| 2 | `03_silver_mt5.sql` | AUTO CDC 的键 / 删除 / 序列 / SCD2 / 用户的追踪列<br>AUTO CDC keys / delete / sequence / SCD2 / tracked columns for users |
+| 3a, 3b | `03_silver_mt5.sql` | 两个无效交易的期望<br>Two expectations for invalid trades |
+| 4 | `03_silver_mt5.sql` | 交易的只追加过滤器<br>Append-only filter for deals |
+| 5 | `05_gold_reporting.sql` | USD 名义本金和客户盈亏<br>USD notional and client P&L |
+
+使用 **Dry run** 验证，然后 **Run pipeline**。卡住了？答案在 `solutions/pipeline/transformations/` 中 — 复制文件到你的文件中（追进度）。
 
 Use **Dry run** to validate, then **Run pipeline**. Stuck? The answers are in
 `solutions/pipeline/transformations/` — copy the file over yours (catch-up).
 
 ## 3 · 观察 (Observe)
+
+- 图（Graph）：哪些表是流式表，哪些是物化视图？为什么？期望（Expectations）选项卡 `silver_mt5_deals`：有多少行被删除，按哪条规则删除？
+- 在讲师的滴灌程序写入新文件后，再次运行管道：只处理新文件（增量）。然后打开 `labs/03b_Explore_Pipeline`。
 
 - Graph: which tables are streaming tables, which are materialized views? Why?
 - Expectations tab of `silver_mt5_deals`: how many rows were dropped, and by which rule?

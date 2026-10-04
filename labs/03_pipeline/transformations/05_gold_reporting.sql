@@ -1,7 +1,9 @@
 -- ===========================================================================
+-- Gold · Reporting marts（Power BI / AI/BI 仪表盘 / Genie 消费的数据）
 -- Gold · Reporting marts (what Power BI / AI/BI dashboards / Genie consume)
 -- ===========================================================================
 
+-- 每个服务器和交易对的日交易活动
 -- Daily trading activity per server and symbol
 CREATE OR REFRESH MATERIALIZED VIEW gold_daily_symbol_volume
 COMMENT 'Daily trading activity per server and symbol: deals, lots, USD notional, client P&L, commission, swap.'
@@ -13,6 +15,7 @@ AS SELECT
   count(*)                                                             AS deals,
   count_if(d.entry = 'IN')                                             AS positions_opened,
   round(sum(d.lots), 2)                                                AS lots,
+  -- TODO 5 · USD 名义本金 = 手数 × 合约大小 × 价格 × RateProfit（报价货币 → USD）；客户盈亏 = profit_usd 之和
   -- TODO 5 · USD notional = lots × contract size × price × RateProfit (quote ccy → USD); client P&L = sum of profit_usd
   round(sum(____), 2)                                                  AS notional_usd,
   round(sum(____), 2)                                                  AS client_pnl_usd,
@@ -24,6 +27,7 @@ LEFT JOIN ref_symbols s ON d.symbol = s.symbol
 WHERE d.deal_type IN ('BUY', 'SELL')
 GROUP BY ALL;
 
+-- 每个客户每天：盈亏、成本、资金（带有客户的**当前**属性）
 -- Per client per day: P&L, costs, funding (with the client's *current* attributes)
 CREATE OR REFRESH MATERIALIZED VIEW gold_client_daily_pnl
 COMMENT 'Per client per day: trades, lots, trading P&L, costs, deposits and withdrawals (USD).'

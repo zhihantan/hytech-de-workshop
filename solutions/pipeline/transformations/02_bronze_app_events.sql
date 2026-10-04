@@ -1,5 +1,8 @@
 -- ===========================================================================
 -- Bronze · App events (Sensors-style JSON)
+-- 显式的"契约"schema：SDK 稍后添加的字段（例如 campaign_id）
+-- 和类型错误的值（金额发送为 "1,234.50"）不会丢失 —
+-- 它们会落地在 _rescued_data 中作为 JSON。
 -- An explicit "contract" schema: fields the SDK adds later (e.g. campaign_id)
 -- and values with the wrong type (amount sent as "1,234.50") are not lost —
 -- they land in _rescued_data as JSON.

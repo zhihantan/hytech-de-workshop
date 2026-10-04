@@ -2,7 +2,7 @@
   "datasets": [
     {
       "name": "ds_cost",
-      "displayName": "Workshop cost by day",
+      "displayName": "工作坊每日成本 (Workshop cost by day)",
       "queryLines": [
         "WITH resources AS (\n",
         "  SELECT pipeline_id AS resource_id, 'pipeline' AS resource_type,\n",
@@ -36,7 +36,7 @@
     },
     {
       "name": "ds_job_runs",
-      "displayName": "Workshop job runs",
+      "displayName": "工作坊作业运行 (Workshop job runs)",
       "queryLines": [
         "WITH jobs AS (\n",
         "  SELECT job_id, max_by(name, change_time) AS resource_name\n",
@@ -70,7 +70,7 @@
     },
     {
       "name": "ds_task_runs",
-      "displayName": "Workshop task runs",
+      "displayName": "工作坊任务运行 (Workshop task runs)",
       "queryLines": [
         "WITH jobs AS (\n",
         "  SELECT job_id, max_by(name, change_time) AS job_name\n",
@@ -90,7 +90,7 @@
     },
     {
       "name": "ds_pipeline_updates",
-      "displayName": "Workshop pipeline updates",
+      "displayName": "工作坊管道更新 (Workshop pipeline updates)",
       "queryLines": [
         "WITH pipelines AS (\n",
         "  SELECT pipeline_id, max_by(name, change_time) AS pipeline_name\n",
@@ -123,7 +123,9 @@
             "multilineTextboxSpec": {
               "lines": [
                 "## Hytech DE 工作坊 · 成本 (Workshop cost)\n",
-                "只统计工作坊的管道和作业（名称包含 `trade_lakehouse`、`daily_trading_reporting`、`hytech_ws_`），最近 30 天。按**标价 (list price)** 计算：实际价格 = 标价 × 合同折扣。账单数据有数小时延迟。数据来自治理视图 `hytech_de_workshop.ops.*`。\n"
+                "只统计工作坊的管道和作业（名称包含 `trade_lakehouse`、`daily_trading_reporting`、`hytech_ws_`），最近 30 天。按**标价 (list price)** 计算：实际价格 = 标价 × 合同折扣。账单数据有数小时延迟。数据来自治理视图 `hytech_de_workshop.ops.*`。\n",
+                "\n",
+                "Workshop pipelines and jobs only (names containing `trade_lakehouse`, `daily_trading_reporting` or `hytech_ws_`), last 30 days. Costs use the **list price**: real price = list price × contract discount. Billing data lags by a few hours. Source: the governed views `hytech_de_workshop.ops.*`.\n"
               ]
             }
           },
@@ -131,7 +133,7 @@
             "x": 0,
             "y": 0,
             "width": 6,
-            "height": 2
+            "height": 3
           }
         },
         {
@@ -176,7 +178,7 @@
           },
           "position": {
             "x": 0,
-            "y": 2,
+            "y": 3,
             "width": 3,
             "height": 2
           }
@@ -216,7 +218,7 @@
           },
           "position": {
             "x": 0,
-            "y": 4,
+            "y": 5,
             "width": 2,
             "height": 3
           }
@@ -256,7 +258,7 @@
           },
           "position": {
             "x": 2,
-            "y": 4,
+            "y": 5,
             "width": 2,
             "height": 3
           }
@@ -296,7 +298,7 @@
           },
           "position": {
             "x": 4,
-            "y": 4,
+            "y": 5,
             "width": 2,
             "height": 3
           }
@@ -361,7 +363,7 @@
           },
           "position": {
             "x": 0,
-            "y": 7,
+            "y": 8,
             "width": 6,
             "height": 6
           }
@@ -426,7 +428,7 @@
           },
           "position": {
             "x": 0,
-            "y": 13,
+            "y": 14,
             "width": 6,
             "height": 8
           }
@@ -444,7 +446,9 @@
             "multilineTextboxSpec": {
               "lines": [
                 "## 运行情况 (Runs & health)\n",
-                "工作坊作业的运行、任务耗时和管道更新（最近 30 天），来自 `system.lakeflow` 的治理视图。\n"
+                "工作坊作业的运行、任务耗时和管道更新（最近 30 天），来自 `system.lakeflow` 的治理视图。\n",
+                "\n",
+                "Workshop job runs, task durations and pipeline updates (last 30 days), from governed views over `system.lakeflow`.\n"
               ]
             }
           },
@@ -452,7 +456,7 @@
             "x": 0,
             "y": 0,
             "width": 6,
-            "height": 2
+            "height": 3
           }
         },
         {
@@ -490,7 +494,7 @@
           },
           "position": {
             "x": 0,
-            "y": 2,
+            "y": 3,
             "width": 2,
             "height": 3
           }
@@ -530,7 +534,7 @@
           },
           "position": {
             "x": 2,
-            "y": 2,
+            "y": 3,
             "width": 2,
             "height": 3
           }
@@ -570,7 +574,7 @@
           },
           "position": {
             "x": 4,
-            "y": 2,
+            "y": 3,
             "width": 2,
             "height": 3
           }
@@ -635,7 +639,7 @@
           },
           "position": {
             "x": 0,
-            "y": 5,
+            "y": 6,
             "width": 3,
             "height": 6
           }
@@ -689,7 +693,7 @@
           },
           "position": {
             "x": 3,
-            "y": 5,
+            "y": 6,
             "width": 3,
             "height": 6
           }
@@ -917,7 +921,7 @@
           },
           "position": {
             "x": 0,
-            "y": 11,
+            "y": 12,
             "width": 6,
             "height": 7
           }
@@ -1146,7 +1150,7 @@
           },
           "position": {
             "x": 0,
-            "y": 18,
+            "y": 19,
             "width": 6,
             "height": 7
           }

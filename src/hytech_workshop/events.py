@@ -1,4 +1,5 @@
-"""Sensors-Data-style mobile/web app events (JSON lines), with deliberate schema drift."""
+"""Sensors-Data 风格的移动/网络应用事件 (JSON 行)，具有意图 schema 漂移。
+Sensors-Data-style mobile/web app events (JSON lines), with deliberate schema drift."""
 
 from __future__ import annotations
 
@@ -78,7 +79,8 @@ def gen_events(rng, users_by_server: dict[str, pd.DataFrame], start_us: int, end
             props["method"] = METHODS[rng.integers(len(METHODS))]
             if ev != "deposit_click":
                 amt = round(float(rng.lognormal(np.log(450), 0.9)), 2)
-                # type drift: amount sometimes arrives as a formatted string -> lands in _rescued_data
+                # 类型漂移：金额有时作为格式化字符串到达 -> 进入 _rescued_data
+            # type drift: amount sometimes arrives as a formatted string -> lands in _rescued_data
                 props["amount"] = f"{amt:,.2f}" if ti >= mismatch_from_us and rng.random() < 0.15 else amt
                 props["currency"] = "USD"
         elif ev == "app_feedback":
@@ -96,13 +98,14 @@ def gen_events(rng, users_by_server: dict[str, pd.DataFrame], start_us: int, end
             "properties": props,
         }
         out.append((ti, event))
-        if rng.random() < 0.01:  # SDK retry -> duplicate event
+        if rng.random() < 0.01:  # SDK 重试 -> 重复事件 (SDK retry -> duplicate event)
             out.append((ti + int(rng.integers(1, 120)) * 1_000_000, event))
     return out
 
 
 def write_events(events: list[tuple[int, dict]], events_dir: str, bucket_us: int = US_H) -> int:
-    """Group events into files by bucket (hour) -> <dir>/<yyyy-mm-dd>/events-<yyyymmdd-HHMMSS>.json"""
+    """按桶 (小时) 将事件分组到文件中 -> <dir>/<yyyy-mm-dd>/events-<yyyymmdd-HHMMSS>.json
+    Group events into files by bucket (hour) -> <dir>/<yyyy-mm-dd>/events-<yyyymmdd-HHMMSS>.json"""
     buckets: dict[int, list[str]] = {}
     for ti, ev in events:
         buckets.setdefault(ti - ti % bucket_us, []).append(json.dumps(ev, ensure_ascii=False))

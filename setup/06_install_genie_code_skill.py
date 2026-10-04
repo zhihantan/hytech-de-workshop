@@ -2,6 +2,8 @@
 # MAGIC %md
 # MAGIC # 06 · 安装 Genie Code 技能 (Install the `hytech-de-conventions` Genie Code skill)
 # MAGIC
+# MAGIC 将 `genie_code/.assistant/skills/hytech-de-conventions/SKILL.md` 复制到工作区范围的技能文件夹 `/Workspace/.assistant/skills/`（需要工作区管理员权限）。或可选地复制到每个学员的主文件夹 `/Users/<email>/.assistant/skills/` — 如果不允许使用工作区范围文件夹，请使用此方式。
+# MAGIC
 # MAGIC Copies `genie_code/.assistant/skills/hytech-de-conventions/SKILL.md` to the workspace-wide skills folder
 # MAGIC `/Workspace/.assistant/skills/` (needs workspace-admin rights). Optionally also into each participant's
 # MAGIC home `/Users/<email>/.assistant/skills/` — use this if the workspace-wide folder is not allowed.

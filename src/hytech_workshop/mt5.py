@@ -1,4 +1,8 @@
-"""Synthetic MT5 report-database tables (mt5_users, mt5_deals, mt5_positions).
+"""合成 MT5 报告数据库表 (mt5_users, mt5_deals, mt5_positions)。
+列名遵循 MT5 报告表 (PascalCase)。文件的布局方式类似于 AWS DMS 写入 S3 的方式:
+全量加载 (``LOAD00000001.parquet``) 加上时间戳 CDC 文件 (``yyyymmdd-hhmmssfff.parquet``)
+带有 ``Op`` 列 (I/U/D) 和 ``cdc_ts`` 提交时间戳。所有内部时间戳都是 int64 微秒 (UTC)。
+Synthetic MT5 report-database tables (mt5_users, mt5_deals, mt5_positions).
 
 Column names follow the MT5 report tables (PascalCase). Files are laid out like AWS DMS
 writes them to S3: a full load (``LOAD00000001.parquet``) plus timestamped CDC files
@@ -84,23 +88,29 @@ MESSY = {  # free-text variants that rule-based parsing struggles with (used in 
 
 
 def round_to(x, digits) -> np.ndarray:
-    """Round each element to its own number of decimals (np.round only accepts a scalar)."""
+    """将每个元素舍入到其自己的小数位数 (np.round 仅接受标量)。
+    Round each element to its own number of decimals (np.round only accepts a scalar)."""
     f = np.power(10.0, np.asarray(digits, dtype=float))
     return np.round(np.asarray(x, dtype=float) * f) / f
 
 
 def weekday(ts_us: np.ndarray) -> np.ndarray:
-    return ((ts_us // US_D) + 3) % 7  # Monday = 0; 1970-01-01 was a Thursday
+    """获取给定时间戳的工作日 (周一 = 0)。
+    Get weekday for given timestamps (Monday = 0)."""
+    return ((ts_us // US_D) + 3) % 7  # 周一 = 0; 1970-01-01 是星期四 (Monday = 0; 1970-01-01 was a Thursday)
 
 
 def to_ts(us) -> pd.Series:
+    """将微秒时间戳转换为 pandas Series。
+    Convert microsecond timestamps to pandas Series."""
     return pd.to_datetime(np.asarray(us, dtype=np.int64), unit="us", utc=True)
 
 
-# --------------------------------------------------------------------------- users
+# ------------------------------------------------ 用户 (users) --------
 def gen_users(rng, server: str, n: int, reg_from_us: int, reg_to_us: int, start_seq: int,
               recent_share: float = 0.25, recent_from_us: int | None = None) -> pd.DataFrame:
-    """Client accounts. Internal (non-MT5) columns are prefixed with ``_``."""
+    """生成客户账户。内部 (非 MT5) 列以 ``_`` 前缀。
+    Client accounts. Internal (non-MT5) columns are prefixed with ``_``."""
     meta = SERVER_META[server]
     countries = np.array(list(meta["countries"]))
     cw = np.array(list(meta["countries"].values()), dtype=float)
@@ -145,10 +155,11 @@ def gen_users(rng, server: str, n: int, reg_from_us: int, reg_to_us: int, start_
     return df
 
 
-# ----------------------------------------------------------------------- positions
+# ---------------------------------------- 持仓 (positions) --------
 def gen_positions(rng, server: str, users: pd.DataFrame, start_us: int, end_us: int, per_day: float,
                   prices, start_seq: int) -> pd.DataFrame:
-    """Round-trip positions opened in [start_us, end_us). close_us may be beyond end_us (still open)."""
+    """生成在 [start_us, end_us) 中开仓的往返持仓。close_us 可能超过 end_us (仍然开仓)。
+    Round-trip positions opened in [start_us, end_us). close_us may be beyond end_us (still open)."""
     sym = symbols_df().set_index("symbol")
     names = sym.index.to_numpy()
     pop = sym["popularity"].to_numpy(dtype=float)
@@ -166,6 +177,7 @@ def gen_positions(rng, server: str, users: pd.DataFrame, start_us: int, end_us: 
     symbol = np.where(is_weekend, names[rng.choice(len(names), size=n, p=p_crypto)],
                       names[rng.choice(len(names), size=n, p=p_all)])
 
+    # 选择在交易日之前注册的交易者 (活跃 >> 休眠; 待审核/禁用从不交易)
     # pick traders registered before the trading day (ACTIVE >> DORMANT; PENDING/DISABLED never trade)
     w = users["_activity"].to_numpy() * users["Status"].map({"ACTIVE": 1.0, "DORMANT": 0.03}).fillna(0.0).to_numpy()
     reg = users["Registration"].to_numpy()
@@ -201,6 +213,7 @@ def gen_positions(rng, server: str, users: pd.DataFrame, start_us: int, end_us: 
     lots = np.clip(np.round(rng.lognormal(np.log(s["lot_median"].to_numpy()), 0.9), 2), 0.01, 50.0)
     mid_o = prices.prices_at(symbol, open_us)
     mid_c = prices.prices_at(symbol, close_us)
+    # 零售客户平均亏损 (~70% 的差价合约账户亏损): 56% 的交易以错误的一方结束
     # retail flow loses on average (~70% of CFD accounts lose money): 56% of trades end on the wrong side
     up = mid_c >= mid_o
     wrong = rng.random(n) < 0.56
@@ -234,7 +247,8 @@ def gen_positions(rng, server: str, users: pd.DataFrame, start_us: int, end_us: 
 
 
 def position_mark(pos: pd.DataFrame, ts_us: np.ndarray, prices) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Mark-to-market (PriceCurrent, Profit, RateProfit) for positions at timestamps."""
+    """按时间戳计算持仓的市值 (PriceCurrent, Profit, RateProfit)。
+    Mark-to-market (PriceCurrent, Profit, RateProfit) for positions at timestamps."""
     mid = prices.prices_at(pos["Symbol"].to_numpy(), ts_us)
     px = round_to(mid - pos["_sign"].to_numpy() * pos["_spread"].to_numpy() / 2, pos["_digits"].to_numpy())
     rate = prices.usd_per_quote(pos["_quote"].to_numpy(), ts_us)
@@ -243,9 +257,10 @@ def position_mark(pos: pd.DataFrame, ts_us: np.ndarray, prices) -> tuple[np.ndar
     return px, pnl, rate
 
 
-# ---------------------------------------------------------------------------- deals
+# ---------------------------------------- 成交 (deals) --------
 def deals_from_positions(rng, pos: pd.DataFrame, horizon_us: int) -> pd.DataFrame:
-    """IN deal at open, OUT deal at close (only if closed before the horizon)."""
+    """在开仓时的 IN 成交，平仓时的 OUT 成交 (仅当在地平线前平仓)。
+    IN deal at open, OUT deal at close (only if closed before the horizon)."""
     lag_in = rng.integers(1, 30, size=len(pos)) * US_S
     ins = pd.DataFrame({
         "Login": pos["Login"], "Time": pos["open_us"], "Symbol": pos["Symbol"], "Action": pos["Action"],
@@ -275,6 +290,8 @@ def deals_from_positions(rng, pos: pd.DataFrame, horizon_us: int) -> pd.DataFram
 
 
 def _funding_comment(rng, methods, lang, country, ref, last4, other, wallet, kind="dep"):
+    """生成入金/出金注释（中英文混合）。
+    Generate deposit/withdrawal comment (mixed Chinese and English)."""
     keys = np.array([m[0] for m in methods])
     w = np.array([m[1] for m in methods])
     i = rng.choice(len(methods), p=w / w.sum())
@@ -288,7 +305,8 @@ def _funding_comment(rng, methods, lang, country, ref, last4, other, wallet, kin
 
 
 def gen_balance_deals(rng, users: pd.DataFrame, start_us: int, end_us: int) -> pd.DataFrame:
-    """Deposits / withdrawals (MT5 balance deals, Action=2) incl. first-time deposits (FTD)."""
+    """入金/出金 (MT5 余额成交, Action=2) 包括首次入金 (FTD)。
+    Deposits / withdrawals (MT5 balance deals, Action=2) incl. first-time deposits (FTD)."""
     rows = []
     act = users[users["Status"] == "ACTIVE"]
     lw = np.sqrt(act["_activity"].to_numpy())
@@ -319,6 +337,8 @@ def gen_balance_deals(rng, users: pd.DataFrame, start_us: int, end_us: int) -> p
 
 
 def _balance_row(rng, u, t_us: int, amount: float, kind: str, ftd: bool = False) -> dict:
+    """为单个用户生成入金或出金成交行。
+    Generate single deposit or withdrawal deal row for a user."""
     ref = f"{rng.integers(10**7, 10**8):d}"
     last4 = f"{rng.integers(1000, 9999):d}"
     other = int(u["Login"]) + int(rng.integers(1, 500))
@@ -338,7 +358,8 @@ def _balance_row(rng, u, t_us: int, amount: float, kind: str, ftd: bool = False)
 
 def finalize_deals(rng, deals: pd.DataFrame, server: str, start_seq: int, invalid_pct: float,
                    now_us: int) -> pd.DataFrame:
-    """Assign Deal/Order ids in time order and inject invalid rows for the expectations lab."""
+    """按时间顺序分配成交/订单 ID，并为期望讲习班注入无效行。
+    Assign Deal/Order ids in time order and inject invalid rows for the expectations lab."""
     deals = deals.sort_values(["Time", "PositionID"], kind="stable").reset_index(drop=True)
     n = len(deals)
     deals["Deal"] = SERVER_META[server]["deal_base"] + start_seq + np.arange(n, dtype=np.int64)
@@ -358,9 +379,10 @@ def finalize_deals(rng, deals: pd.DataFrame, server: str, start_seq: int, invali
     return deals
 
 
-# -------------------------------------------------------------- user change stream
+# ---------------------- 用户变更流 (user change stream) --------
 def user_change_rows(rng, users: pd.DataFrame, t0_us: int, now_us: int, server: str) -> tuple[list[dict], pd.DataFrame]:
-    """CDC after-images (U/D) for existing users during [t0, now). Returns rows and final state."""
+    """[t0, now) 期间现有用户的 CDC 后映像 (U/D)。返回行和最终状态。
+    CDC after-images (U/D) for existing users during [t0, now). Returns rows and final state."""
     days = (now_us - t0_us) / US_D
     ibs = ib_hierarchy_df(42)
     region = SERVER_META[server]["region"]
@@ -422,8 +444,10 @@ def user_change_rows(rng, users: pd.DataFrame, t0_us: int, now_us: int, server: 
     return rows, final.reset_index(drop=True)
 
 
-# ------------------------------------------------------------------ table builders
+# ---------------------- 表构建器 (table builders) --------
 def users_frame(df: pd.DataFrame, op: str | None = None, cdc_us: int | None = None) -> pd.DataFrame:
+    """从 DataFrame 构建用户表帧。
+    Build users table frame from DataFrame."""
     out = df[[c for c in USERS_SCHEMA.names if c in df.columns]].copy()
     if op is not None:
         out["Op"] = op
@@ -434,6 +458,8 @@ def users_frame(df: pd.DataFrame, op: str | None = None, cdc_us: int | None = No
 
 def positions_frame(pos: pd.DataFrame, op: str, cdc_us, t_update_us, price_current, profit, rate,
                     storage=None) -> pd.DataFrame:
+    """从持仓数据构建持仓表帧。
+    Build positions table frame from position data."""
     return pd.DataFrame({
         "Op": op, "cdc_ts": cdc_us, "Position": pos["Position"].to_numpy(), "Login": pos["Login"].to_numpy(),
         "Symbol": pos["Symbol"].to_numpy(), "Action": pos["Action"].to_numpy(), "Volume": pos["Volume"].to_numpy(),
@@ -447,6 +473,8 @@ def positions_frame(pos: pd.DataFrame, op: str, cdc_us, t_update_us, price_curre
 
 
 def to_arrow(df: pd.DataFrame, table: str) -> pa.Table:
+    """将 DataFrame 转换为 PyArrow 表，使用适当的 schema。
+    Convert DataFrame to PyArrow table with appropriate schema."""
     schema = SCHEMAS[table]
     data = {}
     for f in schema:

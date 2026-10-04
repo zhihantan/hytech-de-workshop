@@ -1,9 +1,9 @@
-# Declarative Automation Bundle (formerly "Databricks Asset Bundles").
-#   databricks bundle validate                 # check config
-#   databricks bundle deploy  -t dev           # deploy to your dev copy (names prefixed with [dev <you>])
-#   databricks bundle run hytech_ws_setup      # build catalog + synthetic data
-#   databricks bundle deploy  -t prod          # shared workshop deployment (Hytech admin)
-#   databricks bundle deploy  -t cicd          # CI/CD pattern: deployed by a service principal (docs/cicd_demo.md)
+# 声明式自动化包 (Declarative Automation Bundle; formerly "Databricks Asset Bundles")
+#   databricks bundle validate                 # 检查配置 (check config)
+#   databricks bundle deploy  -t dev           # 部署到你的开发副本（名称前缀为 [dev <you>]) (deploy to your dev copy; names prefixed with [dev <you>])
+#   databricks bundle run hytech_ws_setup      # 构建 catalog + 合成数据 (build catalog + synthetic data)
+#   databricks bundle deploy  -t prod          # 共享工作坊部署（Hytech 管理员）(shared workshop deployment; Hytech admin)
+#   databricks bundle deploy  -t cicd          # CI/CD 模式：由服务主体部署 (CI/CD pattern: deployed by a service principal) (docs/cicd_demo.md)
 bundle:
   name: hytech-de-workshop
 
@@ -12,22 +12,22 @@ include:
 
 variables:
   catalog:
-    description: Unity Catalog catalog for the workshop
+    description: 工作坊使用的 Unity Catalog catalog / Unity Catalog catalog for the workshop
     default: hytech_de_workshop
   participant_group:
-    description: Account-level group containing all participants
+    description: 包含所有学员的账户级组 / Account-level group containing all participants
     default: de_workshop_sz
   llm_endpoint:
-    description: Foundation Model API endpoint used by ai_query
+    description: ai_query 使用的基础模型 API 端点 / Foundation Model API endpoint used by ai_query
     default: databricks-claude-sonnet-4-5
   solutions_schema:
-    description: Schema for the solution pipeline and job tables (each deployment in a catalog needs its own)
+    description: 参考答案管道和作业表的 schema（每个 catalog 中的每个部署都需要自己的 schema）/ Schema for the solution pipeline and job tables (each deployment in a catalog needs its own)
     default: solutions
   warehouse_id:
-    description: SQL warehouse for the cost dashboard (empty = the setup job picks a serverless warehouse)
+    description: 成本仪表盘使用的 SQL 仓库（空值 = 设置作业会选择无服务器仓库）/ SQL warehouse for the cost dashboard (empty = the setup job picks a serverless warehouse)
     default: ""
   cicd_service_principal:
-    description: Application ID of the service principal that deploys the cicd target (CI sets it from DATABRICKS_CLIENT_ID)
+    description: 部署 cicd 目标的服务主体的应用 ID（CI 从 DATABRICKS_CLIENT_ID 设置）/ Application ID of the service principal that deploys the cicd target (CI sets it from DATABRICKS_CLIENT_ID)
     default: ""
 
 targets:
@@ -39,6 +39,8 @@ targets:
     variables:
       warehouse_id: 01427ef1c429a676   # FEVM test workspace
 
+  # 共享工作坊部署。根路径在 /Workspace/Shared 中，以便 Hytech 管理员和两位讲师
+  # 可以重新部署同一副本（一个部署状态）。
   # Shared workshop deployment. The root path is in /Workspace/Shared so the Hytech admin and both instructors
   # can redeploy the same copy (one deployment state).
   prod:
@@ -47,6 +49,9 @@ targets:
       host: https://fe-vm-zh-serverless-ws.cloud.databricks.com
       root_path: /Workspace/Shared/.bundle/${bundle.name}/${bundle.target}
 
+  # Hytech GitLab CI/CD 的生产模式：服务主体部署、拥有和运行所有东西；
+  # 没有人手动部署。根路径是服务主体的主文件夹，所以只有它（和管理员）可以
+  # 更改已部署的文件。参见 cicd/gitlab-ci.yml 和 docs/cicd_demo.md。
   # The production pattern for Hytech's GitLab CI/CD: a service principal deploys, owns and runs everything;
   # nobody deploys by hand. The root path is the service principal's home folder, so only it (and admins) can
   # change the deployed files. See cicd/gitlab-ci.yml and docs/cicd_demo.md.

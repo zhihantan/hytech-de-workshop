@@ -3,6 +3,8 @@ resources:
     hytech_ws_setup:
       name: hytech_ws_setup
       description: >-
+        一次性工作坊设置：catalog/schemas/volumes + 授权、合成 MT5 着陆区（DMS 风格 CDC）、
+        学员 schemas、受管系统表视图、Genie Code 技能。
         One-time workshop setup: catalog/schemas/volumes + grants, synthetic MT5 landing zone (DMS-style CDC),
         participant schemas, governed system-table views, Genie Code skill.
       max_concurrent_runs: 1

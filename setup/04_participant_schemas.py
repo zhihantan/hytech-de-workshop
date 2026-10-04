@@ -2,6 +2,8 @@
 # MAGIC %md
 # MAGIC # 04 · 学员 Schema (Participant schemas)
 # MAGIC
+# MAGIC 为每个学员创建 `<catalog>.u_<name>` 和一个 `checkpoints` volume，并让学员成为**所有者**：他们可以在自己的 schema 中创建管道、表、列掩码和行过滤器，无需额外授权。将 `participants` 留空即可跳过（学员可以在 `labs/00_Start_Here` 中自行创建，如果他们在 catalog 上有 `CREATE SCHEMA` 权限）。
+# MAGIC
 # MAGIC Creates `<catalog>.u_<name>` plus a `checkpoints` volume for every participant and makes the participant
 # MAGIC the **owner**: they can then create pipelines, tables, masks and row filters in their own schema without
 # MAGIC extra grants. Leave `participants` empty to skip (participants can self-create in `labs/00_Start_Here`

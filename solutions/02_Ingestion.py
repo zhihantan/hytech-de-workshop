@@ -2,12 +2,12 @@
 # MAGIC %md
 # MAGIC # 02 · 数据接入 (Data ingestion) — CTAS · COPY INTO · Auto Loader · JSON & rescued data
 # MAGIC
-# MAGIC | 方式 Method | 适合 | 增量? |
+# MAGIC | 方式 (Method) | 适合 (Use case) | 增量? (Incremental?) |
 # MAGIC |---|---|---|
-# MAGIC | `CREATE TABLE AS SELECT` + `read_files` | 一次性 / 小文件全量重建 | 否：每次全量 |
-# MAGIC | `COPY INTO` | 批量、幂等地加载新文件（SQL） | 是：已加载的文件会被跳过 |
-# MAGIC | **Auto Loader** (`cloudFiles`) | 持续到达的大量文件（DMS CDC!） | 是：checkpoint 记录已处理的文件 |
-# MAGIC | Lakeflow Connect 托管连接器 | SaaS / 数据库（NetSuite GA，MySQL CDC 预览） | 是：托管 CDC |
+# MAGIC | `CREATE TABLE AS SELECT` + `read_files` | 一次性 / 小文件全量重建 (one-off / small file full rebuild) | 否：每次全量 (No: full each time) |
+# MAGIC | `COPY INTO` | 批量、幂等地加载新文件（SQL）(Batch, idempotent load of new files — SQL) | 是：已加载的文件会被跳过 (Yes: loaded files skipped) |
+# MAGIC | **Auto Loader** (`cloudFiles`) | 持续到达的大量文件（DMS CDC!）(Continuous high-volume files — DMS CDC!) | 是：checkpoint 记录已处理的文件 (Yes: checkpoint tracks processed files) |
+# MAGIC | Lakeflow Connect 托管连接器 | SaaS / 数据库（NetSuite GA，MySQL CDC 预览）(SaaS / database — NetSuite GA, MySQL CDC preview) | 是：托管 CDC (Yes: managed CDC) |
 
 # COMMAND ----------
 
@@ -41,6 +41,8 @@ print("schema:", f"{catalog}.{my_schema}", "| checkpoints:", checkpoints)
 # MAGIC %md
 # MAGIC ## B · COPY INTO — 幂等的批量加载 (idempotent batch load)
 # MAGIC **运行两次！** 第二次 `num_affected_rows = 0`：COPY INTO 记得哪些文件已经加载过。
+# MAGIC
+# MAGIC **Run it twice!** The second time `num_affected_rows = 0`: COPY INTO remembers which files have been loaded.
 
 # COMMAND ----------
 
@@ -63,9 +65,13 @@ print("schema:", f"{catalog}.{my_schema}", "| checkpoints:", checkpoints)
 # MAGIC %md
 # MAGIC ## C · Auto Loader — DMS CDC Parquet → bronze
 # MAGIC * `cloudFiles.format` = 文件格式；`schemaLocation` = 推断出的 schema 存放处（并支持 schema 演进）
+# MAGIC * `cloudFiles.format` = file format; `schemaLocation` = inferred schema location (supports schema evolution)
 # MAGIC * `checkpointLocation` = 已处理文件的记录 → **只处理新文件**
+# MAGIC * `checkpointLocation` = record of processed files → **only process new files**
 # MAGIC * `trigger(availableNow=True)` = 处理完现有新文件就停止（批式调度的流）
+# MAGIC * `trigger(availableNow=True)` = stop after processing existing new files (streaming batch for scheduled runs)
 # MAGIC * 路径通配符 `mt5/*/mt5_deals/`：以后新增的服务器会自动被接入
+# MAGIC * Path wildcard `mt5/*/mt5_deals/`: new servers added later will be automatically onboarded
 
 # COMMAND ----------
 
@@ -100,15 +106,17 @@ print("rows in this run:", sum(p["numInputRows"] for p in query.recentProgress))
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC **再运行一次上面的 Auto Loader 单元格 (run the Auto Loader cell again):** 如果没有新文件，`rows in this run: 0`。
-# MAGIC 讲师的 drip producer 每 30 秒写入新的 CDC 文件 → 再运行就只会读到那些新文件。
+# MAGIC **再运行一次上面的 Auto Loader 单元格 (run the Auto Loader cell again):** 如果没有新文件，`rows in this run: 0`。讲师的 drip producer 每 30 秒写入新的 CDC 文件 → 再运行就只会读到那些新文件。
+# MAGIC
+# MAGIC If there are no new files, you see `rows in this run: 0`. The instructor's drip producer writes new CDC files every 30 seconds → re-run to read only those new files.
 
 # COMMAND ----------
 
 # MAGIC %md
 # MAGIC ## D · JSON + rescued data — 数据契约 (a data contract for app events)
-# MAGIC 我们给 Sensors 风格的事件定义一个**契约 schema**。契约外的新字段（如 `campaign_id`）和类型不符的值
-# MAGIC （`amount` 以字符串 `"1,234.50"` 到达）不会丢失，而是进入 `_rescued_data`。
+# MAGIC 我们给 Sensors 风格的事件定义一个**契约 schema**。契约外的新字段（如 `campaign_id`）和类型不符的值（`amount` 以字符串 `"1,234.50"` 到达）不会丢失，而是进入 `_rescued_data`。
+# MAGIC
+# MAGIC We define a **contract schema** for Sensors-style events. New fields outside the contract (e.g., `campaign_id`) and type mismatches (e.g., `amount` arrives as string `"1,234.50"`) are not lost; they go into `_rescued_data`.
 
 # COMMAND ----------
 
@@ -156,6 +164,6 @@ events_query.awaitTermination()
 
 # MAGIC %md
 # MAGIC ## E · 小结 (Recap)
-# MAGIC * bronze 保留**原始**数据 + 元数据列（`server_id`、`source_file`、`ingested_at`）→ 可追溯、可重放
-# MAGIC * Auto Loader 的 checkpoint 让流式接入既增量又可靠；COPY INTO 适合 SQL 用户的批量增量加载
-# MAGIC * 下一步 (next): 在 **Spark 声明式管道** 中，用更少的代码声明同样的 bronze 表，并加上 silver / gold 与数据质量规则。
+# MAGIC * bronze 保留**原始**数据 + 元数据列（`server_id`、`source_file`、`ingested_at`）→ 可追溯、可重放<br>bronze keeps **raw** data + metadata columns (`server_id`, `source_file`, `ingested_at`) → traceable, replayable
+# MAGIC * Auto Loader 的 checkpoint 让流式接入既增量又可靠；COPY INTO 适合 SQL 用户的批量增量加载<br>Auto Loader checkpoints make streaming incremental and reliable; COPY INTO suits SQL users for batch incremental load
+# MAGIC * 下一步 (next): 在 **Spark 声明式管道** 中，用更少的代码声明同样的 bronze 表，并加上 silver / gold 与数据质量规则。<br>Next: in **Spark Declarative Pipelines**, declare the same bronze table with less code and add silver / gold layers plus data quality rules.

@@ -2,15 +2,17 @@
 # MAGIC %md
 # MAGIC # 03 · 实时数据滴灌 (Drip producer) — instructor only
 # MAGIC
+# MAGIC 在实验期间保持数据接入区"活跃"：每 `interval_seconds`，为每个 MT5 服务器的每个表写入一个 DMS 风格的变更数据 (CDC) 文件（新成交、平仓、头寸标记、入金/出金、客户更新）和一个应用事件 JSON 文件。
+# MAGIC
 # MAGIC Keeps the landing zone "live" during labs: every `interval_seconds` it writes one DMS-style CDC file per
 # MAGIC MT5 table per server (new trades, closes, position marks, deposits/withdrawals, client updates) and one
 # MAGIC app-events JSON file.
 # MAGIC
-# MAGIC | Parameter | Use in class |
+# MAGIC | 参数 (Parameter) | 在课堂中的使用 (Use in class) |
 # MAGIC |---|---|
-# MAGIC | `duration_minutes` / `interval_seconds` | Run during M3–M5 (e.g. 60 min, every 30 s) |
-# MAGIC | `new_server=mt5-hk-01` | **M5 repair demo**: onboard a new MT5 server (DMS full load, then CDC) |
-# MAGIC | `bad_batch_pct=30` | **M5 DQ-gate demo**: 30% of new trade deals are invalid → expectations drop them → job takes the `false` branch |
+# MAGIC | `duration_minutes` / `interval_seconds` | 在 M3–M5 期间运行（例如 60 分钟，每 30 秒） |
+# MAGIC | `new_server=mt5-hk-01` | **M5 修复演示**：载入新的 MT5 服务器（DMS 全量，然后 CDC） |
+# MAGIC | `bad_batch_pct=30` | **M5 数据质量闸门演示**：30% 的新成交交易无效 → 期望将其删除 → 作业采用 `false` 分支 |
 
 # COMMAND ----------
 

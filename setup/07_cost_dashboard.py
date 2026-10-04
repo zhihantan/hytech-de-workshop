@@ -2,6 +2,8 @@
 # MAGIC %md
 # MAGIC # 07 · 成本与运行仪表盘 (Cost & health dashboard)
 # MAGIC
+# MAGIC 从 `dashboards/workshop_cost_health.json` 为 M6b 演示发布 AI/BI 仪表盘。它仅读取治理视图 `ops`（在 `05` 中创建）和仅限于工作坊管道和作业。重新运行将在原地更新相同的仪表盘。它位于运行者的主文件夹，而不是 `/Workspace/Shared`（每个用户都会继承 CAN MANAGE）。学员组获得 **CAN READ**；仪表盘使用发布者的凭证运行，因此查看者无需额外授权。
+# MAGIC
 # MAGIC Publishes the AI/BI dashboard for the M6b demo from `dashboards/workshop_cost_health.json`. It reads only the
 # MAGIC governed `ops` views (created in `05`) and only workshop pipelines and jobs. Re-running updates the same
 # MAGIC dashboard in place. It lives in the runner's home folder, not `/Workspace/Shared` (where every user would

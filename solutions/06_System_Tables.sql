@@ -6,9 +6,15 @@
 -- MAGIC 这本身就是一个治理实践：分析师不需要直接访问整个账户的系统表。
 -- MAGIC
 -- MAGIC ⚠️ 账单数据（billing）有数小时延迟：今天的运行可能明天早上才完整出现。
+-- MAGIC
+-- MAGIC Access system tables through **governance views** under `hytech_de_workshop.ops`: only your workspace's data, SQL text removed, others' identities masked.
+-- MAGIC This is a governance practice: analysts don't need direct access to the entire account's system tables.
+-- MAGIC
+-- MAGIC ⚠️ Billing data has a few hours lag: today's runs may not appear completely until tomorrow morning.
 
 -- COMMAND ----------
 
+-- 定义变量：我的 schema、管道和作业 (Define variables: my schema, pipeline, job)
 DECLARE OR REPLACE VARIABLE my_schema STRING DEFAULT
   'u_' || regexp_replace(lower(split_part(current_user(), '@', 1)), '[^a-z0-9]', '_');
 DECLARE OR REPLACE VARIABLE my_pipeline_id STRING;
@@ -17,7 +23,7 @@ DECLARE OR REPLACE VARIABLE my_job_id STRING;
 USE CATALOG hytech_de_workshop;
 USE SCHEMA ops;
 
--- Your pipeline (lab 03) and job (lab 04), found by owner + name
+-- 查找你的管道（Lab 03）和作业（Lab 04），按所有者和名称查找 (Find your pipeline (lab 03) and job (lab 04) by owner + name)
 SET VAR my_pipeline_id = (
   SELECT max_by(pipeline_id, create_time) FROM pipelines
   WHERE created_by = current_user() AND name LIKE 'trade_lakehouse%' AND delete_time IS NULL);
@@ -89,6 +95,7 @@ SELECT u.usage_date,
        round(sum(u.usage_quantity), 3)                        AS dbus,
        round(sum(u.usage_quantity * p.pricing.default), 2)    AS list_cost_usd
 FROM billing_usage u
+-- 按 SKU 名称与价格有效期窗口联接 (Join by SKU name with price validity window)
 JOIN list_prices p
   ON u.sku_name = p.sku_name
  AND u.usage_start_time >= p.price_start_time
@@ -100,7 +107,7 @@ ORDER BY u.usage_date, u.billing_origin_product;
 
 -- COMMAND ----------
 
--- Cost per job run (which run was the most expensive?)
+-- 每次作业运行的成本（哪次运行最贵？） (Cost per job run (which run was the most expensive?))
 SELECT u.usage_metadata.job_run_id                          AS job_run_id,
        round(sum(u.usage_quantity), 3)                      AS dbus,
        round(sum(u.usage_quantity * p.pricing.default), 3)  AS list_cost_usd
@@ -119,6 +126,7 @@ ORDER BY list_cost_usd DESC;
 
 -- COMMAND ----------
 
+-- 查找血缘：你的 schema 是源或目标 (Find lineage: your schema is source or target)
 SELECT DISTINCT
        coalesce(source_table_full_name, source_path) AS source,
        target_table_full_name                       AS target,
@@ -143,5 +151,9 @@ LIMIT 20;
 
 -- MAGIC %md
 -- MAGIC ## 6 · 思考 (Discuss)
+-- MAGIC
 -- MAGIC * Hytech 每周的成本复盘需要哪些指标？（团队 / 管道 / 作业 / 失败运行浪费 / 全量 vs 增量）
 -- MAGIC * 用 Genie Code 把上面的成本查询做成一个 AI/BI 仪表盘页面（Lab 05 的最后一题）。
+-- MAGIC
+-- MAGIC * What metrics does Hytech's weekly cost review need? (team / pipeline / job / wasted failed runs / full vs incremental)
+-- MAGIC * Use Genie Code to build a dashboard from the cost queries above (the final task from Lab 05).

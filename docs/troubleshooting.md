@@ -1,39 +1,45 @@
-# Troubleshooting · 常见问题
+# 常见问题 (Troubleshooting)
 
-| Symptom | Cause | Fix |
+| 症状 (Symptom) | 原因 (Cause) | 解决办法 (Fix) |
 |---|---|---|
-| `PRINCIPAL_DOES_NOT_EXIST: de_workshop_sz` on GRANT | The group is workspace-local or missing. Unity Catalog needs an **account-level** group | Create the group at account level (IdP/SCIM). In a test workspace, grant to `account users` instead |
-| `UC_TAG_POLICY_VALUE_NOT_ALLOWED` when setting a tag | The tag key is a **governed tag** with a list of allowed values (account-level tag policy) | Use an allowed value or a different key. Good discussion point: this is how a company-wide tag standard is enforced |
-| Lab 00: cannot create schema | Participant lacks `CREATE SCHEMA` on the catalog | Re-run `setup/04_participant_schemas` with their email, or grant `CREATE SCHEMA` to the group |
-| Pipeline: `____` / syntax error | TODO not filled in | Fill the TODO, or copy the file from `solutions/pipeline/transformations/` (catch-up) |
-| Pipeline: `landing_root` not found | Configuration keys missing | Pipeline settings → Configuration: `landing_root`, `ref_root` (see `labs/03_pipeline/README.md`) |
-| `dq_gate`: "No pipeline updates found in …pipeline_event_log" | Event log not published | Pipeline settings → Advanced → Publish event log → `pipeline_event_log` in your schema; run the pipeline again |
-| Repair fails: "Inputs of a For each task repair must resolve to the same total iterations" | The repair resolved `servers` to a different list than the original run | Repair with the **same** `servers` value as the original run (only change `fail_server`) |
-| Repair API: "latest repair ID needs to be provided" | A previous repair exists | UI handles this; with the API pass `latest_repair_id` |
-| Run shows **Succeeded with failures** | A middle task failed but the leaf tasks (Run-if alert/audit) succeeded | Expected. Inspect the failed task; consider which tasks should decide the run status |
-| `ai_query` error: endpoint not found / not available in region | FMAPI model not served in this region | Use an available endpoint (`llm_endpoint` job parameter); enable cross-geography processing |
-| AI commentary has wrong numbers (e.g. 29,161 → "2,916万") | LLMs are unreliable at arithmetic and unit conversion | Pre-compute numbers in SQL; tell the model to quote numbers as-is; spot-check |
-| `ai_translate` does not translate to Chinese | Chinese is not a supported target language | Use `ai_query` with a translation prompt |
-| `_rescued_data` is always NULL | Schema was inferred (it widened types) instead of using the contract schema | Use the explicit schema + `rescuedDataColumn` as in lab 02 / `02_bronze_app_events.sql` |
-| No new rows after re-running Auto Loader | No new files arrived | Ask the instructor to start the drip producer |
-| System-table queries return nothing for today | Billing data lags by hours | Look at yesterday / Day 1; job and pipeline timelines arrive sooner |
-| A run with a failed task shows `SUCCEEDED` in `job_run_timeline` | A run that ends *Succeeded with failures* reports SUCCEEDED at run level | Count failed tasks per run from `job_task_run_timeline` (`job_run_id`), as the cost dashboard does |
-| Job run duration is 0 in `job_run_timeline` | `run_duration_seconds` and the other job-level duration columns can be 0 for serverless runs | Use `timestampdiff(SECOND, min(period_start_time), max(period_end_time))`, as Lab 06 does. Task-level `execution_duration_seconds` is filled in |
-| Anyone can edit a dashboard or bundle files under `/Workspace/Shared` | Folder permissions are inherited and every user has CAN MANAGE on `Shared`; inherited permissions cannot be removed | Keep admin assets in a restricted folder (setup puts the dashboard in the admin's home) and share explicitly. Good governance discussion point |
-| Cost dashboard is empty | Billing lags by hours, or no pipeline/job matches the workshop names | Look at Day 1 on Day 2. It counts pipelines named `…trade_lakehouse…` and jobs named `…daily_trading_reporting…` or `…hytech_ws_…` |
-| Gold shows future dates | `deal_time_not_in_future` is warn-only | Intended discussion point: decide drop vs warn vs fail |
-| Workspace unreachable from the venue | IP access list / network | Use the admin-approved network; Triones checks the IP allow list |
-| Google Docs / Slides do not open | Blocked in mainland China without VPN | Use the PDF copies on the instructor laptop; labs are inside the workspace |
+| GRANT 时报 `PRINCIPAL_DOES_NOT_EXIST: de_workshop_sz`<br>`PRINCIPAL_DOES_NOT_EXIST: de_workshop_sz` on GRANT | 组是工作区本地或缺失。Unity Catalog 需要**账户级**组<br>The group is workspace-local or missing. Unity Catalog needs an **account-level** group | 在账户级创建组（IdP/SCIM）。在测试工作区中，改为授予 `account users`<br>Create the group at account level (IdP/SCIM). In a test workspace, grant to `account users` instead |
+| 设置标签时报 `UC_TAG_POLICY_VALUE_NOT_ALLOWED`<br>`UC_TAG_POLICY_VALUE_NOT_ALLOWED` when setting a tag | 标签键是**受治理标签**，有允许值列表（账户级标签策略）<br>The tag key is a **governed tag** with a list of allowed values (account-level tag policy) | 使用允许的值或其他键。很好的讨论点：这就是公司范围标签标准的执行方式<br>Use an allowed value or a different key. Good discussion point: this is how a company-wide tag standard is enforced |
+| 实验 00：无法创建 schema<br>Lab 00: cannot create schema | 学员在 catalog 上缺少 `CREATE SCHEMA`<br>Participant lacks `CREATE SCHEMA` on the catalog | 重新运行 `setup/04_participant_schemas` 并使用其电邮，或授予 `CREATE SCHEMA` 给组<br>Re-run `setup/04_participant_schemas` with their email, or grant `CREATE SCHEMA` to the group |
+| 管道：TODO 空白未填 / 语法错误<br>Pipeline: `____` / syntax error | TODO 未填入<br>TODO not filled in | 填入 TODO，或从 `solutions/pipeline/transformations/` 复制文件（追进度）<br>Fill the TODO, or copy the file from `solutions/pipeline/transformations/` (catch-up) |
+| 管道：找不到 `landing_root`<br>Pipeline: `landing_root` not found | 配置键缺失<br>Configuration keys missing | 管道设置 → 配置：`landing_root`、`ref_root`（见 `labs/03_pipeline/README.md`）<br>Pipeline settings → Configuration: `landing_root`, `ref_root` (see `labs/03_pipeline/README.md`) |
+| `dq_gate` 报错：事件日志里找不到管道更新<br>`dq_gate`: "No pipeline updates found in …pipeline_event_log" | 事件日志未发布<br>Event log not published | 管道设置 → 高级 → 发布事件日志 → 你的 schema 中的 `pipeline_event_log`；重新运行管道<br>Pipeline settings → Advanced → Publish event log → `pipeline_event_log` in your schema; run the pipeline again |
+| 修复运行失败：For each 的迭代总数必须与原运行相同<br>Repair fails: "Inputs of a For each task repair must resolve to the same total iterations" | 修复将 `servers` 解析为与原始运行不同的列表<br>The repair resolved `servers` to a different list than the original run | 用与原始运行**相同**的 `servers` 值修复（仅改变 `fail_server`）<br>Repair with the **same** `servers` value as the original run (only change `fail_server`) |
+| 修复 API 报错：需要提供最新的 repair ID<br>Repair API: "latest repair ID needs to be provided" | 存在之前的修复<br>A previous repair exists | UI 处理此问题；使用 API 传递 `latest_repair_id`<br>UI handles this; with the API pass `latest_repair_id` |
+| 运行显示 **Succeeded with failures**（成功但有失败）<br>Run shows **Succeeded with failures** | 中间任务失败但叶子任务（运行条件告警/审计）成功<br>A middle task failed but the leaf tasks (Run-if alert/audit) succeeded | 预期的。检查失败的任务；考虑哪些任务应该决定运行状态<br>Expected. Inspect the failed task; consider which tasks should decide the run status |
+| `ai_query` 报错：找不到端点 / 该区域不可用<br>`ai_query` error: endpoint not found / not available in region | FMAPI 模型未在该地区提供<br>FMAPI model not served in this region | 使用可用端点（`llm_endpoint` 作业参数）；启用跨地区处理<br>Use an available endpoint (`llm_endpoint` job parameter); enable cross-geography processing |
+| AI commentary has wrong numbers (e.g. 29,161 → "2,916万") | LLM 在算术和单位转换上不可靠<br>LLMs are unreliable at arithmetic and unit conversion | 在 SQL 中预计算数字；让模型按原样引用数字；点检<br>Pre-compute numbers in SQL; tell the model to quote numbers as-is; spot-check |
+| `ai_translate` 无法翻译成中文<br>`ai_translate` does not translate to Chinese | 中文不是支持的目标语言<br>Chinese is not a supported target language | 使用带翻译提示词的 `ai_query`<br>Use `ai_query` with a translation prompt |
+| `_rescued_data` 始终为 NULL<br>`_rescued_data` is always NULL | Schema 被推断（类型被扩大）而不是使用合同 schema<br>Schema was inferred (it widened types) instead of using the contract schema | 使用显式 schema + `rescuedDataColumn`，如实验 02 / `02_bronze_app_events.sql`<br>Use the explicit schema + `rescuedDataColumn` as in lab 02 / `02_bronze_app_events.sql` |
+| 重新运行 Auto Loader 后没有新行<br>No new rows after re-running Auto Loader | 没有新文件到达<br>No new files arrived | 请讲师启动滴灌程序<br>Ask the instructor to start the drip producer |
+| 系统表查询不到今天的数据<br>System-table queries return nothing for today | 账单数据延迟数小时<br>Billing data lags by hours | 查看昨天 / 第 1 天；作业和管道时间线更快到达<br>Look at yesterday / Day 1; job and pipeline timelines arrive sooner |
+| 有任务失败的运行在 `job_run_timeline` 中显示为 `SUCCEEDED`<br>A run with a failed task shows `SUCCEEDED` in `job_run_timeline` | 以*成功但有失败*结束的运行在运行级别报告 SUCCEEDED<br>A run that ends *Succeeded with failures* reports SUCCEEDED at run level | 从 `job_task_run_timeline`（`job_run_id`）计算每次运行的失败任务，如成本仪表盘所做<br>Count failed tasks per run from `job_task_run_timeline` (`job_run_id`), as the cost dashboard does |
+| `job_run_timeline` 中作业运行时长为 0<br>Job run duration is 0 in `job_run_timeline` | `run_duration_seconds` 和其他作业级持续时间列对于无服务器运行可以为 0<br>`run_duration_seconds` and the other job-level duration columns can be 0 for serverless runs | 使用 `timestampdiff(SECOND, min(period_start_time), max(period_end_time))`，如实验 06 所做。任务级 `execution_duration_seconds` 已填入<br>Use `timestampdiff(SECOND, min(period_start_time), max(period_end_time))`, as Lab 06 does. Task-level `execution_duration_seconds` is filled in |
+| 任何人都能编辑 `/Workspace/Shared` 下的仪表盘或 bundle 文件<br>Anyone can edit a dashboard or bundle files under `/Workspace/Shared` | 文件夹权限继承，每个用户在 `Shared` 上都有 CAN MANAGE；继承权限无法删除<br>Folder permissions are inherited and every user has CAN MANAGE on `Shared`; inherited permissions cannot be removed | 在受限文件夹中保留管理员资产（设置将仪表盘放在管理员主目录中）并明确共享。很好的治理讨论点<br>Keep admin assets in a restricted folder (setup puts the dashboard in the admin's home) and share explicitly. Good governance discussion point |
+| 成本仪表盘没有数据<br>Cost dashboard is empty | 账单延迟数小时，或没有管道/作业与工作坊名称匹配<br>Billing lags by hours, or no pipeline/job matches the workshop names | 在第 2 天查看第 1 天。它计算名称为 `…trade_lakehouse…` 的管道和名称为 `…daily_trading_reporting…` 或 `…hytech_ws_…` 的作业<br>Look at Day 1 on Day 2. It counts pipelines named `…trade_lakehouse…` and jobs named `…daily_trading_reporting…` or `…hytech_ws_…` |
+| `00_master_setup` 报错 "managed by a bundle"<br>`00_master_setup` stops: "managed by a bundle" | 方式 B（bundle 的 `prod` 目标）已经部署了同名作业或管道<br>The bundle's `prod` target already deployed a job or pipeline with the same name | 二选一：继续用 bundle，或先 `databricks bundle destroy -t prod` 再运行一键安装<br>Pick one path: keep using the bundle, or run `databricks bundle destroy -t prod` before the master setup |
+| 管道失败："Failed to update pipeline … event log identifier"，或 `00_master_setup` 报错 "already holds tables of another pipeline"<br>Pipeline fails: "Failed to update pipeline … event log identifier", or `00_master_setup`: "already holds tables of another pipeline" | 参考答案 schema 已被另一个管道使用（例如测试工作区里 bundle 部署的管道）：一个 schema 里的管道表只能属于一个管道<br>The solutions schema is already used by another pipeline (for example the bundle-deployed one on a test workspace): pipeline tables in a schema belong to one pipeline only | 把 `solutions_schema` 设为新的 schema（如 `solutions_master`）后重新运行 `00_master_setup`（可设 `run_setup_job=false`），或先删除另一个管道<br>Re-run `00_master_setup` with `solutions_schema` set to a new schema such as `solutions_master` (`run_setup_job=false` is fine), or delete the other pipeline first |
+| `00_master_setup` 报错 "not found: run this notebook from inside the workshop repo folder"<br>`00_master_setup`: "not found: run this notebook from inside the workshop repo folder" | 笔记本被复制到了代码库文件夹之外，找不到其他 setup 笔记本<br>The notebook was copied out of the repo folder, so it cannot find the other setup notebooks | 从 Git 文件夹（或导入的代码库文件夹）里的 `setup/00_master_setup` 运行<br>Run `setup/00_master_setup` from inside the Git folder (or the imported repo folder) |
+| gold 表出现未来日期<br>Gold shows future dates | `deal_time_not_in_future` 仅警告<br>`deal_time_not_in_future` is warn-only | 意图讨论点：决定放弃 vs 警告 vs 失败<br>Intended discussion point: decide drop vs warn vs fail |
+| 在会场无法访问工作区<br>Workspace unreachable from the venue | IP 访问列表 / 网络<br>IP access list / network | 使用管理员批准的网络；Triones 检查 IP 允许列表<br>Use the admin-approved network; Triones checks the IP allow list |
+| Google Docs / Slides 打不开<br>Google Docs / Slides do not open | 不使用 VPN 在中国大陆被屏蔽<br>Blocked in mainland China without VPN | 使用讲师笔记本上的 PDF 副本；实验在工作区内部<br>Use the PDF copies on the instructor laptop; labs are inside the workspace |
 
-## Reset a participant
+## 重置学员 (Reset a participant)
 
-```sql
-DROP SCHEMA hytech_de_workshop.u_<name> CASCADE;   -- then re-run labs/00_Start_Here
-```
+先在 UI 中删除该学员的管道和作业（否则管道会保留旧的检查点），然后运行：
 
 Delete their pipeline and job in the UI first (or the pipeline keeps the old checkpoints).
 
-## Regenerate the data (instructors only, before the workshop)
+```sql
+DROP SCHEMA hytech_de_workshop.u_<name> CASCADE;   -- 然后重新运行 labs/00_Start_Here (then re-run labs/00_Start_Here)
+```
 
-Run job `hytech_ws_setup` with `reset=true`. This wipes and recreates the landing zone, so every pipeline must
-then be **fully refreshed**.
+## 重新生成数据（仅讲师，工作坊前）(Regenerate the data — instructors only, before the workshop)
+
+运行作业 `hytech_ws_setup` 且 `reset=true`。这会清空并重建落地区，因此之后每个管道都必须**完全刷新**。
+
+Run job `hytech_ws_setup` with `reset=true`. This wipes and recreates the landing zone, so every pipeline must then be **fully refreshed**.

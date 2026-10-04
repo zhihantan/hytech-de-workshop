@@ -4,11 +4,19 @@
 -- MAGIC
 -- MAGIC **目标 (Goals):** 三级命名空间 · 所有权 · 授权 · 视图 · 标签 · 列掩码 · 行过滤 · 血缘
 -- MAGIC
--- MAGIC `catalog.schema.table` — 例如 `hytech_de_workshop.u_zhang_san.users_snapshot`。
+-- MAGIC Three-level namespace · ownership · grants · views · tags · column mask · row filter · lineage
+-- MAGIC
+-- MAGIC `catalog.schema.table` — 例如 `hytech_de_workshop.u_zhang_san.users_snapshot`
+-- MAGIC
+-- MAGIC `catalog.schema.table` — e.g. `hytech_de_workshop.u_zhang_san.users_snapshot`
+-- MAGIC
 -- MAGIC 本 notebook 的所有对象都建在**你自己的 schema** 里（你是 owner）。
+-- MAGIC
+-- MAGIC All objects in this notebook are created in **your own schema** (you are the owner).
 
 -- COMMAND ----------
 
+-- 你的 schema = u_<email name>；SQL 会话变量让每个人的 notebook 保持一致
 -- Your schema = u_<email name>; a SQL session variable keeps the notebook identical for everyone
 DECLARE OR REPLACE VARIABLE my_schema STRING DEFAULT
   'u_' || regexp_replace(lower(split_part(current_user(), '@', 1)), '[^a-z0-9]', '_');
@@ -38,6 +46,8 @@ LIST '/Volumes/hytech_de_workshop/raw/landing/mt5/mt5-sg-01/';
 -- MAGIC %md
 -- MAGIC ## 2 · 建一张受管表 (Create a managed table)
 -- MAGIC 从 4 台服务器的 DMS 全量文件读取客户账户。`_metadata.file_path` 告诉我们每行来自哪台服务器。
+-- MAGIC
+-- MAGIC Read client accounts from the full load files of 4 MT5 servers via DMS. `_metadata.file_path` tells us which server each row came from.
 
 -- COMMAND ----------
 
@@ -64,12 +74,12 @@ SELECT * FROM users_snapshot LIMIT 10;
 
 -- COMMAND ----------
 
--- "Owner" row: you own what you create
+-- "Owner" 行：你创建的东西你拥有 (you own what you create)
 DESCRIBE TABLE EXTENDED users_snapshot;
 
 -- COMMAND ----------
 
--- Grant to a GROUP (never to individuals). de_workshop_sz = all workshop participants.
+-- 授权给一个 GROUP（不要授权给个人）。de_workshop_sz = 所有工作坊参与者 (Grant to a GROUP, never to individuals. de_workshop_sz = all workshop participants.)
 GRANT SELECT ON TABLE users_snapshot TO `de_workshop_sz`;
 SHOW GRANTS ON TABLE users_snapshot;
 
@@ -96,9 +106,9 @@ SELECT * FROM v_clients_by_country ORDER BY clients DESC LIMIT 10;
 
 -- MAGIC %md
 -- MAGIC ## 5 · 标签 (Tags) — classify sensitive columns
--- MAGIC Hytech 已有“列标签 + 下游检查”框架；Unity Catalog 原生支持列标签，并可驱动 ABAC 策略。
--- MAGIC 如果某个标签键是**治理标签 (governed tag)**，只能使用账户管理员允许的值，否则报错
--- MAGIC `UC_TAG_POLICY_VALUE_NOT_ALLOWED` —— 这就是公司级标签规范的强制力。
+-- MAGIC Hytech 已有”列标签 + 下游检查”框架；Unity Catalog 原生支持列标签，并可驱动 ABAC 策略。如果某个标签键是**治理标签 (governed tag)**，只能使用账户管理员允许的值，否则报错 `UC_TAG_POLICY_VALUE_NOT_ALLOWED` —— 这就是公司级标签规范的强制力。
+-- MAGIC
+-- MAGIC Hytech already has a “column tags + downstream checks” framework. Unity Catalog natively supports column tags and can drive ABAC policies. If a tag key is a **governed tag**, only account admin-allowed values are permitted; otherwise you get error `UC_TAG_POLICY_VALUE_NOT_ALLOWED` — this is how company-level tag standards are enforced.
 
 -- COMMAND ----------
 
@@ -115,6 +125,8 @@ WHERE schema_name = my_schema AND table_name = 'users_snapshot';
 -- MAGIC %md
 -- MAGIC ## 6 · 列掩码 (Column mask)
 -- MAGIC 只有 `hytech_pii_readers` 组的成员能看到完整邮箱；其他人（包括你）看到的是掩码后的值。
+-- MAGIC
+-- MAGIC Only members of `hytech_pii_readers` group can see full email addresses; others (including you) see masked values.
 
 -- COMMAND ----------
 
@@ -133,6 +145,8 @@ SELECT login, first_name, email FROM users_snapshot LIMIT 5;
 -- MAGIC %md
 -- MAGIC ## 7 · 行过滤 (Row filter)
 -- MAGIC 例如：Apex 品牌的分析师只能看到 Apex 的客户。
+-- MAGIC
+-- MAGIC For example: Apex brand analysts can only see Apex clients.
 
 -- COMMAND ----------
 
@@ -155,6 +169,9 @@ SELECT brand, count(*) AS clients FROM users_snapshot GROUP BY brand;
 -- MAGIC ## 8 · 血缘 (Lineage)
 -- MAGIC 打开 **Catalog Explorer → `v_clients_by_country` → Lineage**：可以看到它来自 `users_snapshot`，而后者来自 landing volume 的文件。
 -- MAGIC
+-- MAGIC Open **Catalog Explorer → `v_clients_by_country` → Lineage**: you can see it comes from `users_snapshot`, which in turn comes from files in the landing volume.
+-- MAGIC
 -- MAGIC ## 9 · 讲师演示 (Instructor demo) — ABAC with governed tags
--- MAGIC 治理标签（governed tags）由账户管理员定义允许的值；一条 ABAC 策略就能让**所有**打了 `pii` 标签的列自动被掩码，
--- MAGIC 新建的表也会被自动保护——不需要逐表 `SET MASK`。这正是 Hytech 公司级数据安全策略需要的扩展方式。
+-- MAGIC 治理标签（governed tags）由账户管理员定义允许的值；一条 ABAC 策略就能让**所有**打了 `pii` 标签的列自动被掩码，新建的表也会被自动保护——不需要逐表 `SET MASK`。这正是 Hytech 公司级数据安全策略需要的扩展方式。
+-- MAGIC
+-- MAGIC Governed tags are defined by the account admin with allowed values; a single ABAC policy can automatically mask **all** columns tagged with `pii`, and new tables are also auto-protected — no need to `SET MASK` per table. This is how Hytech's enterprise-level data security strategy scales.

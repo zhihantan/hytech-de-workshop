@@ -1,7 +1,10 @@
 -- Databricks notebook source
 -- MAGIC %md
 -- MAGIC # 03b · 探索你的管道结果 (Explore your pipeline)
+-- MAGIC
 -- MAGIC 在 lab 03 的管道成功运行之后再执行。所有查询都在你自己的 schema 里。
+-- MAGIC
+-- MAGIC Execute after the pipeline from lab 03 has run successfully. All queries run in your own schema.
 
 -- COMMAND ----------
 
@@ -12,7 +15,8 @@ USE SCHEMA IDENTIFIER(my_schema);
 
 -- COMMAND ----------
 
--- MAGIC %md ## 1 · 各层行数 (Rows per layer)
+-- MAGIC %md
+-- MAGIC ## 1 · 各层行数 (Rows per layer)
 
 -- COMMAND ----------
 
@@ -29,7 +33,10 @@ UNION ALL SELECT 'gold_daily_symbol_volume', count(*) FROM gold_daily_symbol_vol
 
 -- MAGIC %md
 -- MAGIC ## 2 · 数据质量 (Data quality) — 期望在事件日志里 (expectations live in the event log)
+-- MAGIC
 -- MAGIC 前提：管道设置中已开启 *Publish event log*，表名 `pipeline_event_log`。
+-- MAGIC
+-- MAGIC Prerequisite: *Publish event log* is enabled in pipeline settings, table name is `pipeline_event_log`.
 
 -- COMMAND ----------
 
@@ -46,7 +53,10 @@ GROUP BY ALL ORDER BY failed DESC;
 
 -- MAGIC %md
 -- MAGIC `deal_time_not_in_future` 只是 **warn**（没有 `ON VIOLATION`）——这些行进入了 silver 和 gold。
--- MAGIC 看一看 gold 里“未来日期”的成交 → 讨论：哪些规则应该 drop，哪些应该 warn，哪些应该 fail？
+-- MAGIC 看一看 gold 里”未来日期”的成交 → 讨论：哪些规则应该 drop，哪些应该 warn，哪些应该 fail？
+-- MAGIC
+-- MAGIC `deal_time_not_in_future` is only a **warn** (no `ON VIOLATION`) — these rows enter silver and gold.
+-- MAGIC Look at “future-dated” deals in gold → discuss: which rules should drop, which should warn, which should fail?
 
 -- COMMAND ----------
 
@@ -54,7 +64,8 @@ SELECT deal_date, sum(deals) AS deals FROM gold_daily_symbol_volume WHERE deal_d
 
 -- COMMAND ----------
 
--- MAGIC %md ## 3 · SCD Type 2 — 客户变更历史 (client change history)
+-- MAGIC %md
+-- MAGIC ## 3 · SCD Type 2 — 客户变更历史 (client change history)
 
 -- COMMAND ----------
 
@@ -69,10 +80,13 @@ ORDER BY u.login, u.__START_AT;
 
 -- MAGIC %md
 -- MAGIC 注意：`last_access_at` 变化**不会**产生新版本（不在 `TRACK HISTORY ON` 里），只会就地更新当前行。
+-- MAGIC
+-- MAGIC Note: changes to `last_access_at` **do not** create a new version (not in `TRACK HISTORY ON`), they just update the current row in place.
 
 -- COMMAND ----------
 
--- MAGIC %md ## 4 · 交易修正与删除 (Dealer corrections and deletions)
+-- MAGIC %md
+-- MAGIC ## 4 · 交易修正与删除 (Dealer corrections and deletions)
 
 -- COMMAND ----------
 
@@ -85,9 +99,14 @@ ORDER BY c.cdc_ts DESC LIMIT 10;
 
 -- MAGIC %md
 -- MAGIC ## 5 · 追加 vs MERGE (Append vs MERGE) — 成本为什么不同？
+-- MAGIC
 -- MAGIC `silver_mt5_deals` 是**追加**写入；`silver_mt5_deal_corrections` 是 **MERGE**。看 Delta 历史中的操作和指标：
 -- MAGIC MERGE 需要读取目标表并重写文件。如果把 80 万行的 deals 全表 MERGE，每个微批都要扫描整张表 ——
 -- MAGIC 这正是 Hytech 实时 POC 中成本从每天约 480 美元降到 40 美元以下的原因。
+-- MAGIC
+-- MAGIC `silver_mt5_deals` is **append** writes; `silver_mt5_deal_corrections` is **MERGE**. See operations and metrics in Delta history:
+-- MAGIC MERGE reads the target table and rewrites files. If you MERGE all 800k deals rows, each micro-batch scans the entire table —
+-- MAGIC this is why costs dropped from ~$480/day to below $40/day in Hytech's real-time POC.
 
 -- COMMAND ----------
 
@@ -99,10 +118,12 @@ DESCRIBE HISTORY silver_mt5_deal_corrections LIMIT 5;
 
 -- COMMAND ----------
 
--- MAGIC %md ## 6 · 新鲜度 (Freshness) — DMS 提交 → bronze 入湖延迟
+-- MAGIC %md
+-- MAGIC ## 6 · 新鲜度 (Freshness) — DMS 提交 → bronze 入湖延迟
 
 -- COMMAND ----------
 
+-- 仅来自最近 CDC 文件（滴灌程序）的行；全量加载行的 cdc_ts 都是加载时间
 -- Only rows from recent CDC files (the drip producer); full-load rows all carry cdc_ts = load time
 SELECT server_id,
        max(cdc_ts)                                                                  AS last_dms_commit,
@@ -115,7 +136,8 @@ ORDER BY server_id;
 
 -- COMMAND ----------
 
--- MAGIC %md ## 7 · JSON：救回的数据 (rescued data recovered in silver)
+-- MAGIC %md
+-- MAGIC ## 7 · JSON：救回的数据 (rescued data recovered in silver)
 
 -- COMMAND ----------
 
@@ -125,7 +147,8 @@ FROM silver_app_events GROUP BY event ORDER BY events DESC;
 
 -- COMMAND ----------
 
--- MAGIC %md ## 8 · Gold 一瞥 (A look at gold)
+-- MAGIC %md
+-- MAGIC ## 8 · Gold 一瞥 (A look at gold)
 
 -- COMMAND ----------
 

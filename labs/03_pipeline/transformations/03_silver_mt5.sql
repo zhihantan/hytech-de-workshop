@@ -1,5 +1,10 @@
 -- ===========================================================================
 -- Silver · MT5
+-- 经验法则（来自 Hytech 实时 POC）：
+--   * 可变实体（用户、持仓）-> AUTO CDC（按键 MERGE）
+--   * 不可变事实（成交，~99.9% 插入）-> 只追加流式表
+--     + 用于稀有更正/删除的小型 AUTO CDC 表。
+--   追加成本与**更改的**数据规模成正比；大表 MERGE 与**存储的**数据规模成正比。
 -- Rule of thumb (from Hytech's real-time POC):
 --   * Mutable entities (users, positions)  -> AUTO CDC  (MERGE by key)
 --   * Immutable facts (deals, ~99.9% inserts) -> APPEND-ONLY streaming table
@@ -9,6 +14,7 @@
 -- ===========================================================================
 
 -- ---------------------------------------------------------------------------
+-- silver_mt5_users：AUTO CDC，SCD Type 2（组别 / 杠杆 / IB / 状态的历史）
 -- silver_mt5_users : AUTO CDC, SCD Type 2 (history of group / leverage / IB / status)
 -- ---------------------------------------------------------------------------
 CREATE OR REFRESH STREAMING TABLE silver_mt5_users
@@ -39,7 +45,12 @@ FROM (
     cdc_ts
   FROM STREAM(bronze_mt5_users)
 )
--- TODO 2 · Complete the AUTO CDC clauses (完成 AUTO CDC 子句):
+-- TODO 2 · 完成 AUTO CDC 子句 (Complete the AUTO CDC clauses):
+--   * 键 = server + login（在每个 MT5 服务器内 login 是唯一的）
+--   * DMS 用 _op = 'D' 标记删除
+--   * 按 DMS 提交时间戳 cdc_ts 排序更改
+--   * 仅为这些列保留历史（SCD Type 2）：mt_group, account_type, leverage, ib_login, status
+-- TODO 2 · Complete the AUTO CDC clauses:
 --   * key = server + login (login is only unique per MT5 server)
 --   * DMS marks deletes with _op = 'D'
 --   * order changes by the DMS commit timestamp cdc_ts
@@ -52,6 +63,7 @@ STORED AS SCD TYPE ____
 TRACK HISTORY ON ____;
 
 -- ---------------------------------------------------------------------------
+-- silver_mt5_positions：AUTO CDC，SCD Type 1（仅当前持仓）
 -- silver_mt5_positions : AUTO CDC, SCD Type 1 (current open positions only)
 -- ---------------------------------------------------------------------------
 CREATE OR REFRESH STREAMING TABLE silver_mt5_positions
@@ -88,13 +100,16 @@ COLUMNS * EXCEPT (_op)
 STORED AS SCD TYPE 1;
 
 -- ---------------------------------------------------------------------------
+-- silver_mt5_deals：只追加 + 数据质量期望
 -- silver_mt5_deals : APPEND-ONLY + data-quality expectations
 -- ---------------------------------------------------------------------------
 CREATE OR REFRESH STREAMING TABLE silver_mt5_deals (
   CONSTRAINT valid_login             EXPECT (login IS NOT NULL)                        ON VIOLATION DROP ROW,
+  -- TODO 3a · 删除 volume_raw 不为正的交易行（余额操作的 volume 为 0 — 保留它们！）
   -- TODO 3a · drop trade rows whose volume_raw is not positive (balance deals have volume 0 — keep them!)
   CONSTRAINT valid_trade_volume      EXPECT (____)  ON VIOLATION DROP ROW,
   CONSTRAINT valid_trade_symbol      EXPECT (deal_type = 'BALANCE' OR symbol IS NOT NULL) ON VIOLATION DROP ROW,
+  -- TODO 3b · 删除价格不为正的交易行
   -- TODO 3b · drop trade rows whose price is not positive
   CONSTRAINT valid_trade_price       EXPECT (____)       ON VIOLATION DROP ROW,
   CONSTRAINT deal_time_not_in_future EXPECT (deal_time <= current_timestamp() + INTERVAL 1 HOUR)
@@ -127,11 +142,15 @@ AS SELECT
   cdc_ts,
   ingested_at
 FROM STREAM(bronze_mt5_deals)
--- TODO 4 · Deals are immutable: keep only DMS inserts here (corrections are handled below).
+-- TODO 4 · 成交是不可变的：只在这里保留 DMS 插入（修正在下方处理）。
 --          为什么不用 AUTO CDC？见文件开头的说明。
+-- TODO 4 · Deals are immutable: keep only DMS inserts here (corrections are handled below).
+--          Why not AUTO CDC? See the explanation at the top of the file.
 WHERE Op = '____';
 
 -- ---------------------------------------------------------------------------
+-- silver_mt5_deal_corrections：稀有的做市商修正 (U) / 删除 (D)
+-- 小表，所以 MERGE 成本低。
 -- silver_mt5_deal_corrections : the rare dealer corrections (U) / deletions (D)
 -- Tiny table, so its MERGE is cheap.
 -- ---------------------------------------------------------------------------
@@ -159,6 +178,7 @@ SEQUENCE BY cdc_ts
 STORED AS SCD TYPE 1;
 
 -- ---------------------------------------------------------------------------
+-- silver_mt5_deals_current：已应用修正的成交，已移除删除
 -- silver_mt5_deals_current : deals with corrections applied, deletions removed
 -- ---------------------------------------------------------------------------
 CREATE OR REFRESH MATERIALIZED VIEW silver_mt5_deals_current

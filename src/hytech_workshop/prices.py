@@ -1,4 +1,6 @@
-"""Simulated mid prices: 5-minute geometric Brownian motion per symbol.
+"""模拟中间价格：每个品种 5 分钟的几何布朗运动。
+所有时间戳都是自 Unix 纪元 (UTC) 以来的 int64 微秒。
+Simulated mid prices: 5-minute geometric Brownian motion per symbol.
 
 All timestamps are int64 microseconds since the Unix epoch (UTC).
 """
@@ -37,7 +39,8 @@ class PriceModel:
         return out
 
     def usd_per_quote(self, quote_ccys: np.ndarray, ts_us: np.ndarray) -> np.ndarray:
-        """USD value of one unit of each quote currency at each timestamp (MT5 'RateProfit')."""
+        """每个报价货币在每个时间戳的单位 USD 价值 (MT5 'RateProfit')。
+        USD value of one unit of each quote currency at each timestamp (MT5 'RateProfit')."""
         out = np.ones(len(quote_ccys), dtype=np.float64)
         for ccy in np.unique(quote_ccys):
             m = quote_ccys == ccy
@@ -52,7 +55,8 @@ class PriceModel:
         return out
 
     def rescale_to(self, prices: dict[str, float], at_us: int) -> "PriceModel":
-        """Scale every path so its price at ``at_us`` equals ``prices`` (keeps servers consistent)."""
+        """缩放每条路径，以便其在 ``at_us`` 处的价格等于 ``prices`` (保持服务器一致)。
+        Scale every path so its price at ``at_us`` equals ``prices`` (keeps servers consistent)."""
         for sym, path in self.paths.items():
             self.paths[sym] = path * (prices[sym] / float(self.price_at(sym, np.array([at_us]))[0]))
         return self
@@ -62,7 +66,8 @@ class PriceModel:
 
 
 class LivePrices:
-    """Random-walk prices for the drip producer, continuing from the saved state."""
+    """滴灌程序 (drip producer) 的随机游走价格，从保存状态继续。
+    Random-walk prices for the drip producer, continuing from the saved state."""
 
     def __init__(self, last: dict[str, float], seed: int):
         self.symbols = symbols_df().set_index("symbol")

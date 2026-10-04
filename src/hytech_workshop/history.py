@@ -1,4 +1,5 @@
-"""Build the full landing zone: reference CSVs, DMS full load + 48h of CDC per server, app events."""
+"""构建完整的落地区 (landing zone): 参考 CSV、DMS 全量 + 每个服务器 48 小时的变更数据 (CDC)、应用事件。
+Build the full landing zone: reference CSVs, DMS full load + 48h of CDC per server, app events."""
 
 from __future__ import annotations
 
@@ -16,10 +17,10 @@ from .prices import PriceModel
 from .reference import fx_rates_daily_df, ib_hierarchy_df, servers_df, symbols_csv_df
 from .storage import dms_cdc_name, save_state, write_csv, write_parquet
 
-LOAD_CHUNK = 250_000
+LOAD_CHUNK = 250_000  # 加载块大小 (Load chunk size)
 OPEN_COLS = ["Position", "Login", "Symbol", "Action", "lots", "Volume", "open_us", "close_us", "PriceOpen",
              "PriceSL", "PriceTP", "ContractSize", "RateOpen", "CommissionSide", "ReasonOpen", "ReasonClose",
-             "_digits", "_quote", "_sign", "_spread", "_asset"]
+             "_digits", "_quote", "_sign", "_spread", "_asset"]  # 持仓相关列 (Open positions related columns)
 
 
 def server_rng(seed: int, server: str) -> np.random.Generator:
@@ -28,7 +29,8 @@ def server_rng(seed: int, server: str) -> np.random.Generator:
 
 def write_table_files(cfg: WorkshopConfig, server: str, table: str, load: pd.DataFrame | None,
                       cdc: pd.DataFrame | None, t0_us: int, now_us: int) -> dict:
-    """DMS layout: LOAD0000000N.parquet (Op=I, cdc_ts=T0) + one CDC file per hour bucket."""
+    """DMS 布局: LOAD0000000N.parquet (Op=I, cdc_ts=T0) + 每个小时桶一个 CDC 文件。
+    DMS layout: LOAD0000000N.parquet (Op=I, cdc_ts=T0) + one CDC file per hour bucket."""
     out_dir = cfg.mt5_dir(server, table)
     stats = {"load_rows": 0, "load_files": 0, "cdc_rows": 0, "cdc_files": 0}
     if load is not None and len(load):
@@ -52,6 +54,8 @@ def write_table_files(cfg: WorkshopConfig, server: str, table: str, load: pd.Dat
 
 def build_server(cfg: WorkshopConfig, server: str, prices: PriceModel, hist_start: int, t0: int, now: int,
                  log=print) -> tuple[dict, dict]:
+    """为一个 MT5 服务器生成历史数据: 用户、持仓、成交。
+    Build historical data for one MT5 server: users, positions, deals."""
     rng = server_rng(cfg.seed, server)
     users = mt5.gen_users(rng, server, cfg.users_per_server, hist_start, t0, start_seq=1, recent_share=0.25)
     window_days = (now - t0) / US_D
@@ -65,6 +69,7 @@ def build_server(cfg: WorkshopConfig, server: str, prices: PriceModel, hist_star
     balance = mt5.gen_balance_deals(rng, pd.concat([users, new], ignore_index=True), hist_start, now)
     deals = mt5.finalize_deals(rng, pd.concat([trades, balance], ignore_index=True), server, 1, 0.002, now)
 
+    # ---- 成交: 全量 = T0 前到达; 变更数据 (CDC) = 时间窗口内的插入 + 更正 + 删除
     # ---- deals: full load = arrived before T0; CDC = inserts in window + corrections + deletes
     arrival = deals["arrival_us"].to_numpy()
     deals_load = deals[arrival < t0]
@@ -84,6 +89,7 @@ def build_server(cfg: WorkshopConfig, server: str, prices: PriceModel, hist_star
     dele["Op"] = "D"
     deals_cdc = pd.concat([ins, corr, dele], ignore_index=True)
 
+    # ---- 用户: T0 时的全量，然后 U/D 后映像 + 新注册
     # ---- users: full load as of T0, then U/D after-images + new registrations
     change_rows, users_final = mt5.user_change_rows(rng, users, t0, now, server)
     new_i = mt5.users_frame(new, "I")
@@ -97,6 +103,7 @@ def build_server(cfg: WorkshopConfig, server: str, prices: PriceModel, hist_star
     new_final.loc[kyc.index, "Status"] = "ACTIVE"
     users_cdc = pd.concat([pd.DataFrame(change_rows), new_i, kyc_u], ignore_index=True)
 
+    # ---- 持仓: T0 时的快照，然后在时间窗口内 I (开仓) / U (每 4 小时) / D (平仓)
     # ---- positions: snapshot at T0, then I (open) / U (every 4h) / D (close) in the window
     open_t0 = pos[(pos["open_us"] < t0) & (pos["close_us"] >= t0)]
     px, pnl, rate = mt5.position_mark(open_t0, np.full(len(open_t0), t0), prices)
@@ -141,6 +148,8 @@ def build_server(cfg: WorkshopConfig, server: str, prices: PriceModel, hist_star
 
 
 def build_all(cfg: WorkshopConfig, now_us: int | None = None, log=print) -> dict:
+    """为所有配置的 MT5 服务器构建完整的落地区和相关状态。
+    Build complete landing zone and state for all configured MT5 servers."""
     t_start = time.time()
     now = now_us or int(time.time() // 60 * 60) * US_S
     t0 = now - cfg.cdc_window_hours * US_H
@@ -184,4 +193,6 @@ def build_all(cfg: WorkshopConfig, now_us: int | None = None, log=print) -> dict
 
 
 def landing_tables() -> tuple[str, ...]:
+    """返回落地区表的列表。
+    Return list of landing zone tables."""
     return MT5_TABLES

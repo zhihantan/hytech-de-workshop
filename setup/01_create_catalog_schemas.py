@@ -2,14 +2,16 @@
 # MAGIC %md
 # MAGIC # 01 · 创建 Catalog / Schema / Volume 与授权 (Create catalog, schemas, volumes, grants)
 # MAGIC
+# MAGIC 幂等操作 — 可以安全地重新运行。需要以工作区管理员或 catalog 所有者（例如 Triones）身份运行。
+# MAGIC
 # MAGIC Idempotent — safe to re-run. Run as a workspace admin or the catalog owner (e.g. Triones).
 # MAGIC
-# MAGIC | Object | Purpose |
+# MAGIC | 对象 (Object) | 用途 (Purpose) |
 # MAGIC |---|---|
-# MAGIC | `<catalog>.raw` · volumes `landing`, `ref`, `producer` | DMS-style MT5 CDC files, app events, reference CSVs, drip-producer state |
-# MAGIC | `<catalog>.solutions` | Instructor solution pipeline (catch-up, AI Functions lab) |
-# MAGIC | `<catalog>.ops` | Governed views over system tables (observability lab) |
-# MAGIC | `<catalog>.u_<name>` | One schema per participant (created by `04_participant_schemas` or by the participant in `labs/00_Start_Here`) |
+# MAGIC | `<catalog>.raw` · volumes `landing`, `ref`, `producer` | DMS 风格 MT5 变更数据 (CDC) 文件、应用事件、参考 CSV、滴灌程序 (drip producer) 状态 |
+# MAGIC | `<catalog>.solutions` | 讲师参考答案管道（追进度、AI Functions 实验） |
+# MAGIC | `<catalog>.ops` | 系统表的治理视图（可观测性实验） |
+# MAGIC | `<catalog>.u_<name>` | 每个学员的 schema（由 `04_participant_schemas` 或学员在 `labs/00_Start_Here` 中创建） |
 
 # COMMAND ----------
 
@@ -60,7 +62,9 @@ run(f"ALTER SCHEMA {catalog}.raw SET TAGS ('workshop' = 'hytech_de_2026', 'layer
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ### Grants for the participant group
+# MAGIC ### 学员组的授权 (Grants for the participant group)
+# MAGIC 学员可以**读取**数据接入区、解决方案和 ops 视图，并**创建自己的 schema**。授权需要一个**账户级别**的组；如果还不存在，会跳过并显示警告。
+# MAGIC
 # MAGIC Participants can **read** the landing zone, solutions and ops views, and **create their own schema**.
 # MAGIC Grants need an **account-level** group; if it does not exist yet, they are skipped with a warning.
 

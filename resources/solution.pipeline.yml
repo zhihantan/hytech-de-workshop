@@ -1,3 +1,6 @@
+# 参考答案管道：实验 03 的完整版本（bronze → silver → gold，无服务器），事件日志发布到同一 schema。
+# Reference solution pipeline: the complete version of lab 03 (bronze → silver → gold, serverless),
+# with its event log published to the same schema.
 resources:
   pipelines:
     hytech_trade_lakehouse_solution:

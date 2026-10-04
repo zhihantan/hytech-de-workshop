@@ -1,4 +1,5 @@
-"""Reference data: tradable symbols, IB hierarchy, MT5 servers, daily FX rates."""
+"""参考数据：可交易品种、IB 层次结构、MT5 服务器、每日外汇汇率。
+Reference data: tradable symbols, IB hierarchy, MT5 servers, daily FX rates."""
 
 from __future__ import annotations
 
@@ -7,7 +8,9 @@ import pandas as pd
 
 from .config import SERVER_META
 
+# 品种、描述、资产类别、基数、报价、合约大小、小数位
 # symbol, description, asset_class, base, quote, contract_size, digits,
+# 起始价格、年波动率、热度、点差、中位数量
 # start_price, annual_vol, popularity, spread, lot_median
 SYMBOL_ROWS = [
     ("XAUUSD", "Gold vs US Dollar", "METAL", "XAU", "USD", 100, 2, 3900.0, 0.18, 22, 0.20, 0.20),
@@ -51,6 +54,7 @@ SYMBOL_COLUMNS = [
     "start_price", "annual_vol", "popularity", "spread", "lot_median",
 ]
 
+# USD 价值从交易品种衍生的货币: ccy -> (pair, invert)
 # Currencies whose USD value is derived from a traded pair: ccy -> (pair, invert)
 USD_PER_CCY = {
     "EUR": ("EURUSD", False), "GBP": ("GBPUSD", False), "AUD": ("AUDUSD", False), "NZD": ("NZDUSD", False),
@@ -77,14 +81,16 @@ def symbols_df() -> pd.DataFrame:
 
 
 def symbols_csv_df() -> pd.DataFrame:
-    """Public reference file (what COPY INTO loads): no simulator-only columns."""
+    """公共参考文件 (COPY INTO 加载的内容): 无仅限模拟器的列。
+    Public reference file (what COPY INTO loads): no simulator-only columns."""
     df = symbols_df()
     df["pip_size"] = np.power(10.0, -np.maximum(df["digits"].to_numpy() - 1, 0))
     return df[["symbol", "description", "asset_class", "base_ccy", "quote_ccy", "contract_size", "digits", "pip_size"]]
 
 
 def ib_hierarchy_df(seed: int) -> pd.DataFrame:
-    """~60 introducing brokers: masters per (brand, region) plus sub-IBs."""
+    """~60 个 IB (introducing brokers): 每个 (品牌, 地区) 的主 IB 加上子 IB。
+    ~60 introducing brokers: masters per (brand, region) plus sub-IBs."""
     rng = np.random.default_rng(seed + 7)
     rows = []
     login = 70_000_001
@@ -138,7 +144,8 @@ def servers_df() -> pd.DataFrame:
 
 
 def fx_rates_daily_df(price_model, start_date: pd.Timestamp, end_date: pd.Timestamp) -> pd.DataFrame:
-    """Daily USD value of each quote currency, from the simulated price paths (closes)."""
+    """每个报价货币的每日 USD 价值，来自模拟价格路径 (收盘价)。
+    Daily USD value of each quote currency, from the simulated price paths (closes)."""
     days = pd.date_range(start_date.normalize(), end_date.normalize(), freq="D", tz="UTC")
     rows = []
     for d in days:
