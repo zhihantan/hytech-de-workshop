@@ -45,22 +45,22 @@ FROM (
     cdc_ts
   FROM STREAM(bronze_mt5_users)
 )
--- TODO 2 · 完成 AUTO CDC 子句 (Complete the AUTO CDC clauses):
+-- 要点 2 · AUTO CDC 子句：
 --   * 键 = server + login（在每个 MT5 服务器内 login 是唯一的）
 --   * DMS 用 _op = 'D' 标记删除
 --   * 按 DMS 提交时间戳 cdc_ts 排序更改
 --   * 仅为这些列保留历史（SCD Type 2）：mt_group, account_type, leverage, ib_login, status
--- TODO 2 · Complete the AUTO CDC clauses:
+-- Key point 2 · The AUTO CDC clauses:
 --   * key = server + login (login is only unique per MT5 server)
 --   * DMS marks deletes with _op = 'D'
 --   * order changes by the DMS commit timestamp cdc_ts
 --   * keep history (SCD Type 2) only for: mt_group, account_type, leverage, ib_login, status
-KEYS (____)
-APPLY AS DELETE WHEN ____
-SEQUENCE BY ____
+KEYS (server_id, login)
+APPLY AS DELETE WHEN _op = 'D'
+SEQUENCE BY cdc_ts
 COLUMNS * EXCEPT (_op)
-STORED AS SCD TYPE ____
-TRACK HISTORY ON ____;
+STORED AS SCD TYPE 2
+TRACK HISTORY ON mt_group, account_type, leverage, ib_login, status;
 
 -- ---------------------------------------------------------------------------
 -- silver_mt5_positions：AUTO CDC，SCD Type 1（仅当前持仓）
@@ -105,13 +105,13 @@ STORED AS SCD TYPE 1;
 -- ---------------------------------------------------------------------------
 CREATE OR REFRESH STREAMING TABLE silver_mt5_deals (
   CONSTRAINT valid_login             EXPECT (login IS NOT NULL)                        ON VIOLATION DROP ROW,
-  -- TODO 3a · 删除 volume_raw 不为正的交易行（余额操作的 volume 为 0 — 保留它们！）
-  -- TODO 3a · drop trade rows whose volume_raw is not positive (balance deals have volume 0 — keep them!)
-  CONSTRAINT valid_trade_volume      EXPECT (____)  ON VIOLATION DROP ROW,
+  -- 要点 3a · 删除 volume_raw 不为正的交易行（余额操作的 volume 为 0 — 保留它们！）
+  -- Key point 3a · drop trade rows whose volume_raw is not positive (balance deals have volume 0 — keep them!)
+  CONSTRAINT valid_trade_volume      EXPECT (deal_type = 'BALANCE' OR volume_raw > 0)  ON VIOLATION DROP ROW,
   CONSTRAINT valid_trade_symbol      EXPECT (deal_type = 'BALANCE' OR symbol IS NOT NULL) ON VIOLATION DROP ROW,
-  -- TODO 3b · 删除价格不为正的交易行
-  -- TODO 3b · drop trade rows whose price is not positive
-  CONSTRAINT valid_trade_price       EXPECT (____)       ON VIOLATION DROP ROW,
+  -- 要点 3b · 删除价格不为正的交易行
+  -- Key point 3b · drop trade rows whose price is not positive
+  CONSTRAINT valid_trade_price       EXPECT (deal_type = 'BALANCE' OR price > 0)       ON VIOLATION DROP ROW,
   CONSTRAINT deal_time_not_in_future EXPECT (deal_time <= current_timestamp() + INTERVAL 1 HOUR)
 )
 COMMENT 'MT5 deals (trades + balance operations), append-only. Invalid trade rows are dropped; future-dated rows are flagged (warn).'
@@ -142,11 +142,11 @@ AS SELECT
   cdc_ts,
   ingested_at
 FROM STREAM(bronze_mt5_deals)
--- TODO 4 · 成交是不可变的：只在这里保留 DMS 插入（修正在下方处理）。
+-- 要点 4 · 成交是不可变的：只在这里保留 DMS 插入（修正在下方处理）。
 --          为什么不用 AUTO CDC？见文件开头的说明。
--- TODO 4 · Deals are immutable: keep only DMS inserts here (corrections are handled below).
---          Why not AUTO CDC? See the explanation at the top of the file.
-WHERE Op = '____';
+-- Key point 4 · Deals are immutable: keep only DMS inserts here (corrections are handled below).
+--               Why not AUTO CDC? See the explanation at the top of the file.
+WHERE Op = 'I';
 
 -- ---------------------------------------------------------------------------
 -- silver_mt5_deal_corrections：稀有的做市商修正 (U) / 删除 (D)

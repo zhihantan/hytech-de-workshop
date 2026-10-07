@@ -83,7 +83,7 @@ Full checklist for Hytech's admin: [`docs/setup_guide_triones.md`](docs/setup_gu
 | M1 | `00_Start_Here` — 自己的 schema、浏览 DMS 文件、复制实验<br>`00_Start_Here` — own schema, explore DMS files, copy labs | — |
 | M2 Unity Catalog | `01_Unity_Catalog` — 授权、视图、标签、列掩码、行过滤器<br>`01_Unity_Catalog` — grants, views, tags, column mask, row filter | `solutions/01_Unity_Catalog` |
 | M3 数据接入 (Ingestion) | `02_Ingestion` — CTAS、COPY INTO、Auto Loader、JSON + 救援数据<br>`02_Ingestion` — CTAS, COPY INTO, Auto Loader, JSON + rescued data | `solutions/02_Ingestion` |
-| M4 管道 (Pipelines) | `03_pipeline/` (5 TODOs) + `03b_Explore_Pipeline` | `solutions/pipeline/` |
+| M4 管道 (Pipelines) | `03_pipeline/` + `03b_Explore_Pipeline` | `solutions/pipeline/` |
 | M5 作业 (Jobs) | `04_Lakeflow_Jobs.md` (UI) + `04b_Jobs_Catch_Up` | `resources/solution.job.yml` |
 | M6 Genie Code | `05_Genie_Code.md` 提示词梯度 + 技能 `genie_code/.assistant/skills/hytech-de-conventions`<br>`05_Genie_Code.md` prompt ladder + skill `genie_code/.assistant/skills/hytech-de-conventions` | — |
 | M6 系统表 (System tables) | `06_System_Tables`（通过受治理的 `ops` 视图）<br>`06_System_Tables` (via governed `ops` views) | `solutions/06_System_Tables` |
@@ -101,7 +101,7 @@ Full checklist for Hytech's admin: [`docs/setup_guide_triones.md`](docs/setup_gu
 | `src/hytech_workshop/` | 合成数据生成器：MT5 用户/成交/持仓（作为 DMS CDC）、应用事件、参考数据、滴灌程序<br>Synthetic data generator: MT5 users/deals/positions as DMS CDC, app events, reference data, drip producer |
 | `solutions/pipeline/transformations/` | 参考管道（Python Auto Loader bronze + SQL silver/gold）<br>Reference pipeline (Python Auto Loader bronze + SQL silver/gold) |
 | `jobs/` | 作业任务笔记本：`dq_gate`、`reconcile_server`、`publish_daily_summary`、`notify`、`audit`<br>Job task notebooks: `dq_gate`, `reconcile_server`, `publish_daily_summary`, `notify`, `audit` |
-| `labs/` | 包含 TODO 的学员笔记本<br>Participant notebooks with TODOs |
+| `labs/` | 学员笔记本：完整代码，关键步骤有「要点」注释<br>Participant notebooks: complete code, with "Key point" comments on the key steps |
 | `genie_code/` | Genie Code 技能 + 提示词梯度<br>Genie Code skill + prompt ladder |
 | `tests/` | 本地生成器测试（`pytest tests/`）<br>Local generator tests (`pytest tests/`) |
 

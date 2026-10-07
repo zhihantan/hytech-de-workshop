@@ -122,7 +122,7 @@ One instructor presents while the other circulates; swap per module. With 20 new
 | 09:30 | **M1 平台概览 (Platform overview)** (30) | 湖仓、Unity Catalog、无服务器、Lakeflow（Connect、Pipelines、Jobs）、Genie。Hytech 的真实架构与实验对比<br>Lakehouse, Unity Catalog, serverless, Lakeflow (Connect, Pipelines, Jobs), Genie. Hytech's real architecture next to the lab | 工作区导览 (Workspace tour) | `labs/00_Start_Here`：创建/验证自己的 schema、浏览登陆 volume<br>`labs/00_Start_Here`: create/verify own schema, browse the landing volume | Schema `u_<name>` 已准备好<br>Schema `u_<name>` ready |
 | 10:00 | **M2 Unity Catalog** (30) | 3 级命名空间、所有权、权限、volume、标签、掩码、行过滤器、血缘<br>3-level namespace, ownership, privileges, volumes, tags, masks, row filters, lineage | 基于属性的访问控制和受治理标签（讲师演示）、访问请求<br>ABAC with governed tags (instructor), access requests | `labs/01_Unity_Catalog`：授权、标签、电子邮件/电话列掩码、按品牌行过滤器<br>`labs/01_Unity_Catalog`: grants, tags, column mask on email/phone, row filter by brand | 掩盖的 `users_snapshot` 表<br>Masked `users_snapshot` table |
 | 10:30 | **M3 数据接入 (Ingestion)** (45) | 批量 vs 增量 vs 流式；CTAS / COPY INTO / Auto Loader；元数据列；救援数据；企业连接器<br>Batch vs incremental vs streaming; CTAS / COPY INTO / Auto Loader; metadata columns; rescued data; enterprise connectors | Lakeflow Connect NetSuite（正式发布）、MySQL CDC（预览）<br>Lakeflow Connect NetSuite (GA), MySQL CDC (preview) | `labs/02_Ingestion`：CTAS FX 汇率、COPY INTO 交易品种（×2 用于幂等性）、Auto Loader DMS Parquet、JSON 带救援数据<br>`labs/02_Ingestion`: CTAS FX rates, COPY INTO symbols (×2 for idempotency), Auto Loader DMS Parquet, JSON with rescued data | 4 个 bronze 表<br>4 bronze tables |
-| 11:15 | **M4 Spark 声明式管道 (Spark Declarative Pipelines)** (60) | 流式表 vs 物化视图、AUTO CDC SCD1/2、期望、事件日志；**追加 vs MERGE 成本课程**<br>Streaming tables vs MVs, AUTO CDC SCD1/2, expectations, event log; **append vs MERGE cost lesson** | Lakeflow 管道编辑器；Lakeflow Designer（IB 周报）<br>Lakeflow Pipelines Editor; Lakeflow Designer (IB weekly report) | `labs/03_pipeline`：填写 silver/gold 中的 TODO、创建并运行管道；然后 `labs/03b_Explore_Pipeline`<br>`labs/03_pipeline`: fill the TODOs in silver/gold, create and run the pipeline; then `labs/03b_Explore_Pipeline` | 绿色管道更新；gold 集市<br>Green pipeline update; gold marts |
+| 11:15 | **M4 Spark 声明式管道 (Spark Declarative Pipelines)** (60) | 流式表 vs 物化视图、AUTO CDC SCD1/2、期望、事件日志；**追加 vs MERGE 成本课程**<br>Streaming tables vs MVs, AUTO CDC SCD1/2, expectations, event log; **append vs MERGE cost lesson** | Lakeflow 管道编辑器；Lakeflow Designer（IB 周报）<br>Lakeflow Pipelines Editor; Lakeflow Designer (IB weekly report) | `labs/03_pipeline`：读懂 bronze/silver/gold 中的要点，创建并运行管道；然后 `labs/03b_Explore_Pipeline`<br>`labs/03_pipeline`: read the key points in bronze/silver/gold, create and run the pipeline; then `labs/03b_Explore_Pipeline` | 绿色管道更新；gold 集市<br>Green pipeline update; gold marts |
 | 12:15 | **第 1 天问答 (Q&A Day 1)** (30) | — | 滴灌程序运行：观看新 CDC 在下次更新时落地<br>Drip producer running: watch new CDC land on the next update | 追进度：复制解决方案文件<br>Catch-up: copy solution files | 每个人都有一个管道<br>Everyone has a pipeline |
 
 ### 第 2 天 — 周三 10 月 14 日 (09:30–13:00) (Day 2 — Wed 14 Oct (09:30–13:00))
@@ -156,13 +156,13 @@ One instructor presents while the other circulates; swap per module. With 20 new
 
 ## 5. 实验设计规则 (Lab design rules)
 
-- 每个实验都有 `labs/` 中的 **TODO 块和提示**，以及 `solutions/` 中的完整版本。
+- `labs/` 中的每个实验都包含**完整代码**，关键步骤有「要点」注释；`solutions/` 中保留一份原始副本。
 
-  Every lab has **TODO blocks with hints** in `labs/` and a complete version in `solutions/`.
+  Every lab in `labs/` has the **complete code**, with "Key point" comments on the key steps; `solutions/` keeps an original copy.
 
-- 每个模块都有**追进度路径**：复制解决方案文件或运行辅助单元格，这样没有人会阻止下一个模块。
+- 每个模块都有**追进度路径**：直接运行完整代码，作业模块用 `04b_Jobs_Catch_Up`，这样不会有人卡住而耽误下一个模块。
 
-  Every module has a **catch-up path**: copy the solution file, or run the helper cell, so nobody blocks the next module.
+  Every module has a **catch-up path**: run the complete code, or `04b_Jobs_Catch_Up` for the jobs module, so nobody blocks the next module.
 
 - Markdown 先用中文，英文在方括号中；代码、标识符和列名用英文。
 

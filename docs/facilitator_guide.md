@@ -51,16 +51,16 @@ Only one drip run at a time (`max_concurrent_runs: 1`). Cancel the run to stop i
 | 09:30 | **M1** 平台概览（30）| 数据湖仓、Unity Catalog、无服务器、声明式管道、Genie。展示 Hytech 的架构（MySQL → DMS → S3 → Auto Loader → SDP → Power BI/Genie），对照 `docs/workshop_plan.md` §2。**实验 00** 放在最后 10 分钟：每人创建自己的 schema 并复制实验 |
 | 10:00 | **M2** Unity Catalog（30）| 实验 01。讲解要点：标签 + 掩码就是 Robin 那套列标签检查框架的 UC 原生版本；受治理标签会强制限定允许的取值。演示：Catalog Explorer 血缘、访问申请 |
 | 10:30 | **M3** 数据接入（45）| **启动滴灌程序。** 实验 02。一分钟后重新运行 Auto Loader 单元格，指出它只处理新文件。演示：Lakeflow Connect NetSuite（GA）和 MySQL CDC（预览版），作为不依赖 DMS 的方案 |
-| 11:15 | **M4** 声明式管道（60）| 实验 03：按 README 创建管道，填写 5 个 TODO，运行。**要点：追加 vs MERGE**：mt5_deals 约 99.9% 是插入 → 只追加 + 很小的更正表。在 Hytech 的 POC 中，这次重新设计把成本从约 $480/天降到 $40/天以下（数字仅供讲师掌握）。演示：用 Lakeflow Designer 制作 IB 周报 |
-| 12:15 | 问答（30）| 追进度：从 `solutions/pipeline/transformations/` 复制文件。已完成的学员做实验 03b |
+| 11:15 | **M4** 声明式管道（60）| 实验 03：按 README 创建管道，讲解代码中的 5 个要点，运行。**要点：追加 vs MERGE**：mt5_deals 约 99.9% 是插入 → 只追加 + 很小的更正表。在 Hytech 的 POC 中，这次重新设计把成本从约 $480/天降到 $40/天以下（数字仅供讲师掌握）。演示：用 Lakeflow Designer 制作 IB 周报 |
+| 12:15 | 问答（30）| 追进度：落后的学员直接运行自己的管道（代码已完整）。已完成的学员做实验 03b |
 
 | Time | Segment | Notes |
 |---|---|---|
 | 09:30 | **M1** Platform overview (30) | Lakehouse, UC, serverless, Lakeflow, Genie. Show Hytech's architecture (MySQL → DMS → S3 → Auto Loader → SDP → Power BI/Genie) next to `docs/workshop_plan.md` §2. **Lab 00** last 10 min: everyone creates their schema and copies the labs |
 | 10:00 | **M2** Unity Catalog (30) | Lab 01. Talk track: tags + masks are the UC-native version of Robin's column-tag check framework; governed tags enforce allowed values. Demo: Catalog Explorer lineage, access requests |
 | 10:30 | **M3** Ingestion (45) | **Start the drip producer.** Lab 02. Re-run the Auto Loader cell after a minute and point out the new files only. Demo: Lakeflow Connect NetSuite (GA) and MySQL CDC (preview) as the DMS-free path |
-| 11:15 | **M4** Declarative Pipelines (60) | Lab 03: create the pipeline (README), fill 5 TODOs, run. **Lesson: append vs MERGE**: mt5_deals is about 99.9% inserts → append-only + tiny corrections table. In Hytech's POC this redesign cut cost from about $480/day to under $40/day (facilitator-only number). Demo: Lakeflow Designer builds the IB weekly report |
-| 12:15 | Q&A (30) | Catch-up: copy files from `solutions/pipeline/transformations/`. Lab 03b for those who are done |
+| 11:15 | **M4** Declarative Pipelines (60) | Lab 03: create the pipeline (README), walk through the 5 key points in the code, run. **Lesson: append vs MERGE**: mt5_deals is about 99.9% inserts → append-only + tiny corrections table. In Hytech's POC this redesign cut cost from about $480/day to under $40/day (facilitator-only number). Demo: Lakeflow Designer builds the IB weekly report |
+| 12:15 | Q&A (30) | Catch-up: anyone behind just runs their own pipeline (the code is complete). Lab 03b for those who are done |
 
 ## 第 2 天流程 (Day 2 — run of show)
 
@@ -104,7 +104,7 @@ Only one drip run at a time (`max_concurrent_runs: 1`). Cancel the run to stop i
 
 详见 `docs/troubleshooting.md`。最常见的情况：
 
-- **TODO 语法错误** → 复制参考答案文件。
+- **改代码后出现语法错误** → 从 `solutions/` 复制原始文件。
 - **事件日志未发布** → `dq_gate` 失败。修改管道设置后重新运行。
 - **修复运行被拒** → For each 的迭代次数变了；保持 `servers` 不变。
 - **网络问题** → 找 Triones 检查 IP 允许列表，或改用热点。
@@ -113,7 +113,7 @@ Only one drip run at a time (`max_concurrent_runs: 1`). Cancel the run to stop i
 
 See `docs/troubleshooting.md`. Most common:
 
-- **TODO syntax errors** → copy the solution file.
+- **Syntax errors after editing the code** → copy the original file from `solutions/`.
 - **Event log not published** → `dq_gate` fails. Fix the pipeline setting and re-run.
 - **Repair rejected** → the for-each iteration count changed; keep `servers` the same.
 - **Network** → Triones, the IP allow list, or a hotspot.

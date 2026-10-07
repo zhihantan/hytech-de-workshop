@@ -39,9 +39,13 @@ Build bronze → silver → gold for the MT5 data in **your own schema** `u_<nam
 
    Compute: **Serverless**. Pipeline mode: **Triggered**.
 
-## 2 · 完成 TODO (Fill in the TODOs)
+## 2 · 读懂代码中的要点 (Read the key points in the code)
 
-| TODO | 文件 (File) | 内容 (What) |
+代码已经完整。运行之前，先在各个文件中找到下面这些「要点」注释，看懂它们在做什么：
+
+The code is complete. Before you run it, find these "Key point" comments in the files and make sure you understand what they do:
+
+| 要点 (Key point) | 文件 (File) | 内容 (What) |
 |---|---|---|
 | 1a, 1b | `01_bronze_mt5.py` | Auto Loader 格式；从文件路径中提取 `server_id`<br>Auto Loader format; extract `server_id` from the file path |
 | 2 | `03_silver_mt5.sql` | AUTO CDC 的键 / 删除 / 序列 / SCD2 / 用户的追踪列<br>AUTO CDC keys / delete / sequence / SCD2 / tracked columns for users |
@@ -49,10 +53,10 @@ Build bronze → silver → gold for the MT5 data in **your own schema** `u_<nam
 | 4 | `03_silver_mt5.sql` | 交易的只追加过滤器<br>Append-only filter for deals |
 | 5 | `05_gold_reporting.sql` | USD 名义本金和客户盈亏<br>USD notional and client P&L |
 
-使用 **Dry run** 验证，然后 **Run pipeline**。卡住了？答案在 `solutions/pipeline/transformations/` 中 — 复制文件到你的文件中（追进度）。
+使用 **Dry run** 验证，然后 **Run pipeline**。改坏了代码？从 `solutions/pipeline/transformations/` 复制原始文件。
 
-Use **Dry run** to validate, then **Run pipeline**. Stuck? The answers are in
-`solutions/pipeline/transformations/` — copy the file over yours (catch-up).
+Use **Dry run** to validate, then **Run pipeline**. Broke the code? Copy the original file from
+`solutions/pipeline/transformations/`.
 
 ## 3 · 观察 (Observe)
 

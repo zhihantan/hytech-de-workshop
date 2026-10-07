@@ -2,14 +2,14 @@
 -- MAGIC %md
 -- MAGIC # 06 · 系统表 (System tables) — 成本、运行情况、血缘 (cost, runs, lineage) · LAB
 -- MAGIC
--- MAGIC 填写 `TODO`（答案在 `solutions/06_System_Tables`）。
+-- MAGIC 本实验包含完整代码：逐个运行单元格，结合说明和代码中的「要点」注释理解每一步。改坏了代码？从 `solutions/06_System_Tables` 复制原始版本。
 -- MAGIC
 -- MAGIC 通过 `hytech_de_workshop.ops` 下的**治理视图**访问系统表：只包含本工作区的数据，SQL 文本已移除，其他人的身份被掩码。
 -- MAGIC 这本身就是一个治理实践：分析师不需要直接访问整个账户的系统表。
 -- MAGIC
 -- MAGIC ⚠️ 账单数据（billing）有数小时延迟：今天的运行可能明天早上才完整出现。
 -- MAGIC
--- MAGIC Fill in the `TODO` sections (answers in `solutions/06_System_Tables`).
+-- MAGIC This lab has the complete code: run the cells one by one, and use the notes and the "Key point" comments to follow each step. Broke the code? Copy the original from `solutions/06_System_Tables`.
 -- MAGIC
 -- MAGIC Access system tables through **governance views** under `hytech_de_workshop.ops`: only your workspace's data, SQL text removed, others' identities masked.
 -- MAGIC This is a governance practice: analysts don't need direct access to the entire account's system tables.
@@ -97,12 +97,12 @@ ORDER BY avg_exec_seconds DESC;
 SELECT u.usage_date,
        u.billing_origin_product,
        round(sum(u.usage_quantity), 3)                        AS dbus,
-       -- TODO 1 · 成本 = DBU × 标价 (cost = DBUs × list price (p.pricing.default))
-       round(sum(____), 2)                                    AS list_cost_usd
+       -- 要点 1 (Key point 1) · 成本 = DBU × 标价 (cost = DBUs × list price (p.pricing.default))
+       round(sum(u.usage_quantity * p.pricing.default), 2)    AS list_cost_usd
 FROM billing_usage u
 JOIN list_prices p
-  -- TODO 2 · 按 SKU 名称将用量与价格联接 (join usage to its price by SKU name)
-  ON ____
+  -- 要点 2 (Key point 2) · 按 SKU 名称和价格有效期联接用量与价格 (join usage to its price by SKU name, within the price's validity window)
+  ON u.sku_name = p.sku_name
  AND u.usage_start_time >= p.price_start_time
  AND (p.price_end_time IS NULL OR u.usage_start_time < p.price_end_time)
 WHERE u.usage_metadata.dlt_pipeline_id = my_pipeline_id
@@ -136,8 +136,8 @@ SELECT DISTINCT
        target_table_full_name                       AS target,
        entity_type
 FROM table_lineage
--- TODO 3 · 保留你的 schema 是源或目标的血缘边 (keep lineage edges where your schema is the source or the target)
-WHERE ____
+-- 要点 3 (Key point 3) · 只保留你的 schema 是源或目标的血缘边 (keep only lineage edges where your schema is the source or the target)
+WHERE target_table_schema = my_schema OR source_table_schema = my_schema
 ORDER BY target, source;
 
 -- COMMAND ----------
@@ -156,5 +156,9 @@ LIMIT 20;
 
 -- MAGIC %md
 -- MAGIC ## 6 · 思考 (Discuss)
+-- MAGIC
 -- MAGIC * Hytech 每周的成本复盘需要哪些指标？（团队 / 管道 / 作业 / 失败运行浪费 / 全量 vs 增量）
 -- MAGIC * 用 Genie Code 把上面的成本查询做成一个 AI/BI 仪表盘页面（Lab 05 的最后一题）。
+-- MAGIC
+-- MAGIC * What metrics does Hytech's weekly cost review need? (team / pipeline / job / wasted failed runs / full vs incremental)
+-- MAGIC * Use Genie Code to build a dashboard from the cost queries above (the final task from Lab 05).

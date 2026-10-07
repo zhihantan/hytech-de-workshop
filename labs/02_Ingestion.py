@@ -1,9 +1,9 @@
 # Databricks notebook source
 # MAGIC %md
 # MAGIC # 02 · 数据接入 (Data ingestion) — CTAS · COPY INTO · Auto Loader · JSON & rescued data · LAB
-# MAGIC 填写 `TODO`（答案在 `solutions/02_Ingestion`）
+# MAGIC 本实验包含完整代码：逐个运行单元格，结合说明和代码中的「要点」注释理解每一步。改坏了代码？从 `solutions/02_Ingestion` 复制原始版本。
 # MAGIC
-# MAGIC Fill in the `TODO` markers (answers are in `solutions/02_Ingestion`)
+# MAGIC This lab has the complete code: run the cells one by one, and use the notes and the "Key point" comments to follow each step. Broke the code? Copy the original from `solutions/02_Ingestion`.
 # MAGIC
 # MAGIC | 方式 (Method) | 适合 (Use case) | 增量? (Incremental?) |
 # MAGIC |---|---|---|
@@ -80,8 +80,8 @@ print("schema:", f"{catalog}.{my_schema}", "| checkpoints:", checkpoints)
 
 deals_stream = (
     spark.readStream.format("cloudFiles")
-    # TODO 1 · DMS 写入 Parquet — 设置 Auto Loader 文件格式 (DMS writes Parquet — set the Auto Loader file format)
-    .option("cloudFiles.format", "____")
+    # 要点 1 (Key point 1) · DMS 写入 Parquet，所以 Auto Loader 的文件格式是 parquet (DMS writes Parquet, so the Auto Loader file format is parquet)
+    .option("cloudFiles.format", "parquet")
     .option("cloudFiles.schemaLocation", f"{checkpoints}/bronze_deals_al/_schema")
     .load(f"{landing}/mt5/*/mt5_deals/")
     .select(
@@ -94,8 +94,8 @@ deals_stream = (
 )
 query = (
     deals_stream.writeStream
-    # TODO 2 · Auto Loader 应该在哪里记录已处理的文件？使用 f"{checkpoints}/bronze_deals_al" (where should Auto Loader remember which files it has processed? use f"{checkpoints}/bronze_deals_al")
-    .option("checkpointLocation", ____)
+    # 要点 2 (Key point 2) · Auto Loader 在 checkpoint 中记录已处理过的文件，重新运行时只处理新文件 (the checkpoint is where Auto Loader remembers which files it has processed, so a re-run picks up only new files)
+    .option("checkpointLocation", f"{checkpoints}/bronze_deals_al")
     .trigger(availableNow=True)
     .toTable(f"{catalog}.{my_schema}.bronze_deals_al")
 )
@@ -135,8 +135,8 @@ events_schema = """
 events_query = (
     spark.readStream.format("cloudFiles")
     .option("cloudFiles.format", "json")
-    # TODO 3 · 将未知字段 / 类型不匹配的值保存在名为 _rescued_data 的列中 (keep unknown fields / type mismatches in a column called _rescued_data)
-    .option("____", "_rescued_data")
+    # 要点 3 (Key point 3) · 将未知字段 / 类型不匹配的值保存在名为 _rescued_data 的列中 (keep unknown fields / type mismatches in a column called _rescued_data)
+    .option("rescuedDataColumn", "_rescued_data")
     .schema(events_schema)
     .load(f"{landing}/app_events/")
     .select("*", F.col("_metadata.file_path").alias("source_file"), F.current_timestamp().alias("ingested_at"))

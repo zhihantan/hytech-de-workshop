@@ -23,15 +23,15 @@ def bronze_table(table: str, comment: str) -> None:
     def _bronze():
         return (
             spark.readStream.format("cloudFiles")
-            # TODO 1a · DMS 写入 Parquet 文件。提示：Auto Loader 的文件格式选项
-            # TODO 1a · DMS writes Parquet files. Hint: Auto Loader's file format option
-            .option("cloudFiles.format", "____")
+            # 要点 1a · DMS 写入 Parquet 文件，所以 Auto Loader 的文件格式是 parquet
+            # Key point 1a · DMS writes Parquet files, so the Auto Loader file format is parquet
+            .option("cloudFiles.format", "parquet")
             .load(f"{LANDING}/mt5/*/{table}/")
             .select(
                 "*",
-                # TODO 1b · 从 /mt5/ 后面捕获文件夹名称（例如 mt5-sg-01）。提示：r"/mt5/([^/]+)/"
-                # TODO 1b · capture the folder name after /mt5/ (e.g. mt5-sg-01). Hint: r"/mt5/([^/]+)/"
-                F.regexp_extract("_metadata.file_path", r"____", 1).alias("server_id"),
+                # 要点 1b · 用正则表达式取出 /mt5/ 后面的文件夹名称（例如 mt5-sg-01），作为 server_id
+                # Key point 1b · a regular expression captures the folder name after /mt5/ (e.g. mt5-sg-01) as server_id
+                F.regexp_extract("_metadata.file_path", r"/mt5/([^/]+)/", 1).alias("server_id"),
                 F.col("_metadata.file_path").alias("source_file"),
                 F.col("_metadata.file_modification_time").alias("file_modified_at"),
                 F.current_timestamp().alias("ingested_at"),

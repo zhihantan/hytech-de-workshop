@@ -1,9 +1,9 @@
 -- Databricks notebook source
 -- MAGIC %md
 -- MAGIC # 01 · Unity Catalog — 数据治理 (Data governance) · LAB
--- MAGIC 填写 `TODO`（答案在 `solutions/01_Unity_Catalog`）
+-- MAGIC 本实验包含完整代码：逐个运行单元格，结合说明和代码中的「要点」注释理解每一步。改坏了代码？从 `solutions/01_Unity_Catalog` 复制原始版本。
 -- MAGIC
--- MAGIC Fill in the `TODO` markers (answers are in `solutions/01_Unity_Catalog`)
+-- MAGIC This lab has the complete code: run the cells one by one, and use the notes and the "Key point" comments to follow each step. Broke the code? Copy the original from `solutions/01_Unity_Catalog`.
 -- MAGIC
 -- MAGIC **目标 (Goals):** 三级命名空间 · 所有权 · 授权 · 视图 · 标签 · 列掩码 · 行过滤 · 血缘
 -- MAGIC
@@ -99,8 +99,8 @@ SHOW GRANTS ON TABLE users_snapshot;
 
 CREATE OR REPLACE VIEW v_clients_by_country
 COMMENT 'Client counts and average leverage per brand and country (no PII)'
--- TODO 1 · 每个品牌和国家的客户数量和平均杠杆（四舍五入）(number of clients and average leverage (rounded) per brand and country)
-AS SELECT brand, country, ____ AS clients, ____ AS avg_leverage
+-- 要点 1 (Key point 1) · 每个品牌和国家的客户数量和平均杠杆（四舍五入）(number of clients and average leverage (rounded) per brand and country)
+AS SELECT brand, country, count(*) AS clients, round(avg(leverage)) AS avg_leverage
 FROM users_snapshot
 GROUP BY ALL;
 
@@ -117,8 +117,8 @@ SELECT * FROM v_clients_by_country ORDER BY clients DESC LIMIT 10;
 -- COMMAND ----------
 
 ALTER TABLE users_snapshot ALTER COLUMN email SET TAGS ('hytech_pii' = 'email');
--- TODO 2 · 给 phone 列打上 hytech_pii = phone 标签（和上面一行的模式一样）(tag the phone column as hytech_pii = phone, same pattern as the line above)
-____;
+-- 要点 2 (Key point 2) · 给 phone 列打上 hytech_pii = phone 标签（和上面一行的模式一样）(tag the phone column as hytech_pii = phone, same pattern as the line above)
+ALTER TABLE users_snapshot ALTER COLUMN phone SET TAGS ('hytech_pii' = 'phone');
 ALTER TABLE users_snapshot SET TAGS ('hytech_sensitivity' = 'L3', 'hytech_domain' = 'client');
 
 SELECT column_name, tag_name, tag_value
@@ -141,8 +141,8 @@ RETURN CASE
   ELSE regexp_replace(email, '^(.)[^@]*', '$1***')
 END;
 
--- TODO 3 · 将掩码函数附加到 email 列 (attach the mask function to the email column)
-ALTER TABLE users_snapshot ALTER COLUMN email SET MASK ____;
+-- 要点 3 (Key point 3) · 将掩码函数附加到 email 列 (attach the mask function to the email column)
+ALTER TABLE users_snapshot ALTER COLUMN email SET MASK mask_email;
 
 SELECT login, first_name, email FROM users_snapshot LIMIT 5;
 
@@ -159,8 +159,8 @@ SELECT login, first_name, email FROM users_snapshot LIMIT 5;
 CREATE OR REPLACE FUNCTION brand_filter(brand STRING)
 RETURN is_account_group_member('hytech_all_brands') OR brand = 'Apex';
 
--- TODO 4 · 附加 brand_filter，传递 brand 列 (attach brand_filter, passing the brand column)
-ALTER TABLE users_snapshot SET ROW FILTER ____ ON (____);
+-- 要点 4 (Key point 4) · 附加 brand_filter，传递 brand 列 (attach brand_filter, passing the brand column)
+ALTER TABLE users_snapshot SET ROW FILTER brand_filter ON (brand);
 
 SELECT brand, count(*) AS clients FROM users_snapshot GROUP BY brand;
 

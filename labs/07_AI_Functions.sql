@@ -2,7 +2,9 @@
 -- MAGIC %md
 -- MAGIC # 07 · AI Functions — 在 SQL 里批量调用大模型 (batch LLM calls in SQL) · LAB
 -- MAGIC
--- MAGIC 填写 `TODO`（答案在 `solutions/07_AI_Functions`）。
+-- MAGIC 本实验包含完整代码：逐个运行单元格，结合说明和代码中的「要点」注释理解每一步。改坏了代码？从 `solutions/07_AI_Functions` 复制原始版本。
+-- MAGIC
+-- MAGIC This lab has the complete code: run the cells one by one, and use the notes and the "Key point" comments to follow each step. Broke the code? Copy the original from `solutions/07_AI_Functions`.
 -- MAGIC
 -- MAGIC | 函数<br>Function | 用途<br>Purpose |
 -- MAGIC |---|---|
@@ -79,8 +81,8 @@ WITH c AS (
   WHERE deal_type = 'BALANCE'
 )
 SELECT comment, rule_method,
-       -- TODO 1 · 将备注分类为以下标签 (classify the comment into: crypto, card, bank_transfer, e_wallet, internal_transfer, unknown)
-       ai_classify(comment, ARRAY(____)) AS ai_method
+       -- 要点 1 (Key point 1) · 将备注分类为以下标签 (classify the comment into: crypto, card, bank_transfer, e_wallet, internal_transfer, unknown)
+       ai_classify(comment, ARRAY('crypto', 'card', 'bank_transfer', 'e_wallet', 'internal_transfer', 'unknown')) AS ai_method
 FROM c
 WHERE rule_method = 'unknown' OR comment RLIKE '\\p{IsHan}'
 LIMIT 25;
@@ -105,8 +107,8 @@ LIMIT 25;
 
 -- 掩码个人信息 (Mask PII)
 SELECT feedback_text,
-       -- TODO 2 · 掩码电子邮件、电话号码和人名 (mask emails, phone numbers and person names)
-       ai_mask(feedback_text, ARRAY(____)) AS masked_text
+       -- 要点 2 (Key point 2) · 掩码电子邮件、电话号码和人名 (mask emails, phone numbers and person names)
+       ai_mask(feedback_text, ARRAY('email', 'phone number', 'person name')) AS masked_text
 FROM (SELECT DISTINCT feedback_text FROM silver_app_events WHERE event = 'app_feedback')
 WHERE feedback_text RLIKE '@|\\+[0-9]'
 LIMIT 10;

@@ -15,10 +15,10 @@ AS SELECT
   count(*)                                                             AS deals,
   count_if(d.entry = 'IN')                                             AS positions_opened,
   round(sum(d.lots), 2)                                                AS lots,
-  -- TODO 5 · USD 名义本金 = 手数 × 合约大小 × 价格 × RateProfit（报价货币 → USD）；客户盈亏 = profit_usd 之和
-  -- TODO 5 · USD notional = lots × contract size × price × RateProfit (quote ccy → USD); client P&L = sum of profit_usd
-  round(sum(____), 2)                                                  AS notional_usd,
-  round(sum(____), 2)                                                  AS client_pnl_usd,
+  -- 要点 5 · USD 名义本金 = 手数 × 合约大小 × 价格 × RateProfit（报价货币 → USD）；客户盈亏 = profit_usd 之和
+  -- Key point 5 · USD notional = lots × contract size × price × RateProfit (quote ccy → USD); client P&L = sum of profit_usd
+  round(sum(d.lots * d.contract_size * d.price * d.rate_profit), 2)    AS notional_usd,
+  round(sum(d.profit_usd), 2)                                          AS client_pnl_usd,
   round(sum(d.commission_usd), 2)                                      AS commission_usd,
   round(sum(d.swap_usd), 2)                                            AS swap_usd,
   count(DISTINCT d.login)                                              AS active_clients

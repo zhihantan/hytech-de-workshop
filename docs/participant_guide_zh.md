@@ -39,9 +39,9 @@ Open `/Workspace/Shared/hytech-de-workshop/labs/00_Start_Here` → select **Serv
 | M6c | `08_Knowledge_Check.md` | 知识测验：15 道单选题 + 加分题，对应认证考试大纲<br>Knowledge check: 15 multiple-choice questions + bonus, aligned to certification exam |
 | AI | `07_AI_Functions` | `ai_query`（中文简报）、`ai_classify`、`ai_mask`<br>`ai_query` (Mandarin summary), `ai_classify`, `ai_mask` |
 
-每个实验都有 `TODO`，答案在 `solutions/`。**跟不上没关系**：复制答案文件，继续下一步。
+每个实验都包含完整代码：逐个运行单元格，结合说明和「要点」注释理解每一步。**跟不上没关系**：直接运行下一个单元格即可。改坏了代码？从 `solutions/` 复制原始版本。
 
-Each lab has `TODO` comments; solutions are in `solutions/`. **If you fall behind, no problem**: copy the solution files and move on to the next step.
+Every lab has the complete code: run the cells one by one and use the notes and "Key point" comments to follow each step. **If you fall behind, no problem**: just run the next cell. Broke the code? Copy the original from `solutions/`.
 
 ## 数据是什么 (What is the data?)
 
@@ -64,8 +64,8 @@ Each lab has `TODO` comments; solutions are in `solutions/`. **If you fall behin
 - Genie Code 可以用中文提问，选择 **Agent mode**，用 `@表名` 提供上下文。
   Genie Code accepts Mandarin questions; select **Agent mode** and use `@table_name` for context.
 
-- 管道报错时，先看错误信息里的文件和行号，再对照 `TODO`。
-  When a pipeline fails, check the file and line number in the error message first, then compare with `TODO`.
+- 管道报错时，先看错误信息里的文件和行号；如果改过代码，就从 `solutions/pipeline/transformations/` 复制原始文件。
+  When a pipeline fails, check the file and line number in the error message first; if you changed the code, copy the original file from `solutions/pipeline/transformations/`.
 
 - 不要修改 `raw`、`solutions`、`ops` 下的任何东西（你也没有权限）。
   Do not modify anything under `raw`, `solutions`, or `ops` (you don't have permissions anyway).
