@@ -97,3 +97,31 @@ def test_my_names_match_labs_00_and_04b():
 def test_staging_paths():
     assert sf.staging_root("c", "u_x") == "/Volumes/c/u_x/staging"
     assert sf.staging_dir("c", "u_x") == "/Volumes/c/u_x/staging/mt5/mt5-hk-01/mt5_deals"
+STAGING_SQL = os.path.join(HERE, "..", "labs", "03_pipeline", "staging", "06_staging_mt5_hk01.sql")
+
+
+def test_switch_rule_round_trip_on_the_real_staging_file():
+    text = open(STAGING_SQL, encoding="utf-8").read()
+    dropped = sf.switch_rule(text, "valid_trade_price", "DROP")
+    assert dropped.count("FAIL UPDATE") == text.count("FAIL UPDATE") - 1
+    assert sf.switch_rule(dropped, "valid_trade_price", "FAIL") == text
+    assert sf.switch_rule(text, "valid_trade_price", "FAIL") == text   # already FAIL: no change
+
+
+def test_switch_rule_rejects_an_unknown_rule():
+    with pytest.raises(ValueError):
+        sf.switch_rule("CONSTRAINT x EXPECT (a > 0) ON VIOLATION DROP ROW", "valid_trade_price", "DROP")
+
+
+def test_staging_file_defines_the_four_tables_and_the_three_behaviours():
+    text = open(STAGING_SQL, encoding="utf-8").read()
+    for table in sf.STAGING_TABLES:
+        assert f" {table}\n" in text or f" {table} (" in text, table
+    assert "${staging_root}" in text
+    assert "ON VIOLATION FAIL UPDATE" in text and "ON VIOLATION DROP ROW" in text
+    assert "CONSTRAINT deal_time_not_in_future EXPECT (deal_time <= current_timestamp() + INTERVAL 1 HOUR)\n" in text
+
+
+def test_ws_path_strips_the_workspace_prefix():
+    assert sf.ws_path("/Workspace/Users/a@b/x") == "/Users/a@b/x"
+    assert sf.ws_path("/Users/a@b/x") == "/Users/a@b/x"
