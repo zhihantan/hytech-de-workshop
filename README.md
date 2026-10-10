@@ -99,15 +99,15 @@ Full checklist for Hytech's admin: [`docs/setup_guide_triones.md`](docs/setup_gu
 | 路径 (Path) | 说明 (What) |
 |---|---|
 | `databricks.yml`, `resources/` | 声明式自动化包：设置作业、滴灌程序、参考答案管道和作业（`dev`、`prod` 和 `cicd` 目标）<br>Declarative Automation Bundle: setup job, drip producer, solution pipeline and job (`dev`, `prod` and `cicd` targets) |
-| `setup/` | `00_master_setup`（一键创建并运行全部作业）、`01`–`07` 设置笔记本（`07` 发布成本仪表盘）、`03_drip_producer`、`99_teardown`<br>`00_master_setup` (creates and runs every job in one go), `01`–`07` setup notebooks (`07` publishes the cost dashboard), `03_drip_producer`, `99_teardown` |
+| `setup/` | `00_master_setup`（一键创建并运行全部作业）、`01`–`08` 设置笔记本（`07` 发布成本仪表盘，`08` 授予 SQL 仓库权限，并在开启 Lakehouse RT 时创建 `hytech_workshop_rt`）、`03_drip_producer`、`99_teardown`<br>`00_master_setup` (creates and runs every job in one go), `01`–`08` setup notebooks (`07` publishes the cost dashboard; `08` grants SQL warehouse access and, when Lakehouse RT is on, creates `hytech_workshop_rt`), `03_drip_producer`, `99_teardown` |
 | `dashboards/` | AI/BI 成本和健康仪表盘（JSON 格式），基于 `ops` 视图<br>AI/BI cost & health dashboard (JSON) over the `ops` views |
 | `cicd/` | GitLab CI 模板（在合并请求时验证、作为服务主体部署）和 `deploy_as_service_principal.sh` 实时演示脚本<br>GitLab CI template (validate on merge requests, deploy as a service principal) and `deploy_as_service_principal.sh` for the live demo |
 | `src/hytech_workshop/` | 合成数据生成器：MT5 用户/成交/持仓（作为 DMS CDC）、应用事件、参考数据、滴灌程序<br>Synthetic data generator: MT5 users/deals/positions as DMS CDC, app events, reference data, drip producer |
 | `solutions/pipeline/transformations/` | 参考管道（Python Auto Loader bronze + SQL silver/gold）<br>Reference pipeline (Python Auto Loader bronze + SQL silver/gold) |
-| `jobs/` | 作业任务笔记本：`dq_gate`、`reconcile_server`、`publish_daily_summary`、`notify`、`audit`<br>Job task notebooks: `dq_gate`, `reconcile_server`, `publish_daily_summary`, `notify`, `audit` |
-| `labs/` | 学员笔记本：完整代码，关键步骤有「要点」注释<br>Participant notebooks: complete code, with "Key point" comments on the key steps |
+| `jobs/` | 作业任务笔记本：`dq_gate`、`reconcile_server`、`publish_daily_summary`、`notify`、`audit`、`task_logger`（实验 03d）<br>Job task notebooks: `dq_gate`, `reconcile_server`, `publish_daily_summary`, `notify`, `audit`, `task_logger` (lab 03d) |
+| `labs/` | 学员笔记本：完整代码，关键步骤有「要点」注释；辅助笔记本 `staging_feed`（03c、04c）、`run_if_spec`（03d）、`dashboard_spec`（09b）、`genie_spec`（10b）由实验用 `%run` 加载；`03_pipeline/staging/` 是 03c 的预发布通道文件<br>Participant notebooks: complete code, with "Key point" comments on the key steps; helper notebooks `staging_feed` (03c, 04c), `run_if_spec` (03d), `dashboard_spec` (09b) and `genie_spec` (10b) are loaded by the labs with `%run`; `03_pipeline/staging/` holds 03c's staging-lane file |
 | `genie_code/` | Genie Code 技能 + 提示词梯度<br>Genie Code skill + prompt ladder |
-| `tests/` | 本地生成器测试（`pytest tests/`）<br>Local generator tests (`pytest tests/`) |
+| `tests/` | 本地测试：生成器、实验辅助函数、作业和设置定义、仪表盘和 Genie 定义、文档一致性（`pytest tests/`）<br>Local tests: generator, lab helpers, job and setup definitions, dashboard and Genie definitions, docs consistency (`pytest tests/`) |
 
 ## 值得了解的设计选择 (Design choices worth knowing)
 
@@ -129,6 +129,18 @@ Full checklist for Hytech's admin: [`docs/setup_guide_triones.md`](docs/setup_gu
 - **大语言模型数据。** AI 总结在 SQL 中预先计算每个数字；模型只对其进行措辞（第 07 个实验中的课程）。
 
   **LLM numbers.** The AI summary pre-computes every figure in SQL; the model only words it (lesson in lab 07).
+
+- **每位学员自己的失败。** 实验 03c 和 04c 在学员自己的 schema 和 volume 中写入坏批次，并在自己的管道和作业中失败与恢复。讲师不需要访问学员的环境，这些实验也不依赖滴灌程序。
+
+  **Every participant breaks their own lane.** Labs 03c and 04c write bad batches into the participant's own schema
+  and volume, and fail and recover in their own pipeline and job. No instructor needs access to the participant's
+  environment, and these labs don't depend on the drip producer.
+
+- **自检的实验和参考副本。** 代码实验的每一步以 ✅ / ❌ 检查结束；`auto = true` 代你完成手动步骤（也是我们的验证方式）。补课笔记本 09b 和 10b 创建标题带「· 参考 (reference)」的副本，不会覆盖你自己搭建的仪表盘或 Genie Agent。
+
+  **Self-checking labs and reference copies.** Each step of a code lab ends with ✅ / ❌ checks; `auto = true` does the
+  hand steps for you (it is also how we verify the labs). The catch-up notebooks 09b and 10b create copies titled
+  "· 参考 (reference)", so they never overwrite the dashboard or Genie Agent you built yourself.
 
 ## 在 `fe-vm-zh-serverless-ws` (AWS us-west-2) 上验证，2026 年 10 月 3 日 (Verified on `fe-vm-zh-serverless-ws` (AWS us-west-2), 3 Oct 2026)
 
@@ -170,3 +182,18 @@ Full checklist for Hytech's admin: [`docs/setup_guide_triones.md`](docs/setup_gu
 详情：[`docs/facilitator_guide.md`](docs/facilitator_guide.md#在-fevm-上的验证结果-verified-on-fevm-fe-vm-zh-serverless-ws-3-oct-2026)。
 
 Details: [`docs/facilitator_guide.md`](docs/facilitator_guide.md#在-fevm-上的验证结果-verified-on-fevm-fe-vm-zh-serverless-ws-3-oct-2026).
+
+## 新增实验的验证，2026 年 10 月 10 日 (New labs verified, 10 Oct 2026)
+
+在一个测试工作区（AWS us-east-1）上，以学员身份运行（`auto = true`，每个至少两次）：
+
+On a test workspace (AWS us-east-1), run as a participant (`auto = true`, each at least twice):
+
+| 实验 (Lab) | 结果 (Result) |
+|---|---|
+| `03c_Data_Quality_and_Monitoring` | 22/22 项检查通过：WARN 保留、DROP 进入隔离表、FAIL 只让预发布 silver 失败而下游跳过；策略修复和源头修复<br>22/22 checks: WARN keeps, DROP quarantines, FAIL fails only the staging silver and skips downstream; policy and source fixes |
+| `03d_Run_If_Dependencies` | 11/11 个任务符合预期，运行状态 Succeeded with failures<br>11/11 tasks as expected, run status Succeeded with failures |
+| `04c_Failure_Recovery_and_Backfill` | 23/23 项检查通过：重试、修复运行后同一次运行变绿、没有丢失批次、回填两天且每天正好一份日报；没有成交的日期也能正常回填<br>23/23 checks: retries, the same run green after the repair, no lost batch, two backfilled days with exactly one summary each; a day with no trades backfills cleanly |
+| `setup/08_workshop_warehouses` | 创建 `hytech_workshop_rt`（Real-Time，Small），重新运行不会重复<br>Created `hytech_workshop_rt` (Real-Time, Small); a re-run makes no duplicate |
+| `09b_Dashboard_Catch_Up` | 参考仪表盘在 Real-Time 仓库上发布；三个数据集的查询都成功<br>Reference dashboard published on the Real-Time warehouse; all three dataset queries succeed |
+| `10b_Genie_Catch_Up` | 参考 Genie Agent 用简体中文回答，遵守说明（"昨天" = 数据中最近的一天，完整数字，黄金 = XAUUSD）<br>Reference Genie Agent answers in Simplified Chinese and follows the instructions ("yesterday" = the latest day in the data, full numbers, 黄金 = XAUUSD) |
