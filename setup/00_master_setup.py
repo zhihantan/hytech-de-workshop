@@ -239,6 +239,7 @@ setup_job = {
         task("participant_schemas", "setup/04_participant_schemas", ["create_catalog_schemas"]),
         task("ops_views", "setup/05_ops_views", ["create_catalog_schemas"]),
         task("cost_dashboard", "setup/07_cost_dashboard", ["ops_views"]),
+        task("workshop_warehouses", "setup/08_workshop_warehouses"),
         task("install_genie_code_skill", "setup/06_install_genie_code_skill"),
     ],
 }
@@ -294,6 +295,12 @@ if manage:
         share("dashboards", w.api_client.do("GET", "/api/2.0/workspace/get-status", query={"path": dash})["resource_id"], manage)
     except Exception as e:  # noqa: BLE001 - the dashboard only exists after the setup job has run
         print("⚠️  cost dashboard not shared ->", str(e).splitlines()[0][:160])
+
+# Real-Time 仓库也共享给讲师 (share the Real-Time warehouse with the instructors too)
+if manage:
+    rt = [x for x in w.api_client.do("GET", "/api/2.0/sql/warehouses").get("warehouses", []) if x["name"] == "hytech_workshop_rt"]
+    if rt:
+        share("warehouses", rt[0]["id"], manage)
 
 # COMMAND ----------
 

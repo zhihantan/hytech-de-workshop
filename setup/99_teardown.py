@@ -39,6 +39,13 @@ for p in listed.get("statuses", []):
         w.api_client.do("DELETE", f"/api/2.0/pipelines/{p['pipeline_id']}")
         print("deleted pipeline", p["name"], p["pipeline_id"])
 
+# 删除 08 创建的 Real-Time 仓库（按名称和标签识别）(delete the Real-Time warehouse 08 created, found by name and tag)
+for wh in w.api_client.do("GET", "/api/2.0/sql/warehouses").get("warehouses", []):
+    tags = {t["key"]: t["value"] for t in (wh.get("tags") or {}).get("custom_tags", [])}
+    if wh["name"] == "hytech_workshop_rt" and tags.get("managed_by") == "master_setup":
+        w.api_client.do("DELETE", f"/api/2.0/sql/warehouses/{wh['id']}")
+        print("deleted warehouse", wh["name"], wh["id"])
+
 spark.sql(f"DROP CATALOG IF EXISTS {catalog} CASCADE")
 print("dropped catalog", catalog)
 

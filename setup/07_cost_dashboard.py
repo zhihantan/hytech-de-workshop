@@ -36,14 +36,14 @@ serialized = open(src, encoding="utf-8").read().replace("hytech_de_workshop.ops.
 json.loads(serialized)  # fail fast on a broken file
 
 if not warehouse_id:
-    def running(x):
-        return getattr(x.state, "value", "") == "RUNNING"
-
-    serverless = sorted((x for x in w.warehouses.list() if x.enable_serverless_compute),
-                        key=lambda x: (not running(x), x.name))
+    # Real-Time 仓库不支持系统表；SDK 不认识 REALTIME 类型，所以读原始 JSON
+    # (Real-Time warehouses can't read system tables; the SDK doesn't know the REALTIME type, so read the raw JSON)
+    listed = w.api_client.do("GET", "/api/2.0/sql/warehouses").get("warehouses", [])
+    serverless = sorted((x for x in listed if x.get("enable_serverless_compute") and x.get("warehouse_type") != "REALTIME"),
+                        key=lambda x: (x.get("state") != "RUNNING", x["name"]))
     if not serverless:
         raise ValueError("No serverless SQL warehouse found: set the warehouse_id parameter")
-    warehouse_id = serverless[0].id
+    warehouse_id = serverless[0]["id"]
 print("warehouse_id =", warehouse_id)
 
 # COMMAND ----------
