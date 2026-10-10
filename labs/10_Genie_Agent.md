@@ -4,8 +4,8 @@
 
 Create and configure a **Genie Agent** on your own gold tables and ask it questions in Chinese; then ask the same question through **Genie One** and see how it finds your agent.
 
-> 你需要 (You need)：Databricks SQL 权限，以及对 serverless SQL 仓库的 *Can use*（工作坊设置已授予）。Genie 不能在 Lakehouse RT 仓库上运行，所以这里用 serverless 仓库。如果工作区在新加坡区域而看不到 Agent 模式或 Genie One 对话，请管理员开启跨区域处理 (cross-Geo processing)。<br>
-> The Databricks SQL entitlement and *Can use* on a serverless SQL warehouse (the workshop setup grants it). Genie can't run on a Lakehouse RT warehouse, so use a serverless one. If the workspace is in Singapore and you don't see Agent mode or Genie One chat, ask the admin to enable cross-Geo processing.
+> 你需要 (You need)：Databricks SQL 权限，以及对工作坊 SQL 仓库 `hytech_workshop_sql` 的 *Can use*（工作坊设置已授予）。Genie 不能在 Lakehouse RT 仓库上运行，所以这里用 serverless 仓库。如果工作区在新加坡区域而看不到 Agent 模式或 Genie One 对话，请管理员开启跨区域处理 (cross-Geo processing)。<br>
+> The Databricks SQL entitlement and *Can use* on the workshop SQL warehouse `hytech_workshop_sql` (the workshop setup grants it). Genie can't run on a Lakehouse RT warehouse, so use a serverless one. If the workspace is in Singapore and you don't see Agent mode or Genie One chat, ask the admin to enable cross-Geo processing.
 >
 > 落后了，或管道坏了？运行 `10b_Genie_Catch_Up`（管道坏了就把 `source_schema` 设为 `solutions`）：它会创建一个单独的参考 Agent `MT5 交易分析助手 · <你的名字> · 参考 (reference)`，不会改动你自己配置的 Agent。<br>
 > Fell behind, or your pipeline is broken? Run `10b_Genie_Catch_Up` (set `source_schema` to `solutions` if your pipeline is broken): it creates a separate reference agent, `MT5 交易分析助手 · <your_name> · 参考 (reference)`, and never changes the one you configure.
@@ -14,18 +14,18 @@ Create and configure a **Genie Agent** on your own gold tables and ask it questi
 
 1. 左侧边栏 **Genie Agents → New**。选择你 schema 中的这些表：`gold_client_daily_pnl`、`gold_daily_symbol_volume`、`gold_funding_daily`、`gold_ib_daily_performance`、`gold_net_exposure_by_symbol`、`ref_ib_hierarchy` → **Create**。
 2. **Genie Code** 会自动打开，读取数据，并建议表的说明和示例查询：逐条看一看，接受合理的建议。
-3. **Settings**：标题 `MT5 交易分析助手 · <你的名字>`；仓库选 serverless 仓库。
+3. **Configure → Settings**：标题 `MT5 交易分析助手 · <你的名字>`；仓库选 `hytech_workshop_sql`（或其他 serverless 仓库，不要选 Real-Time 仓库）。
 
 1. In the sidebar, **Genie Agents → New**. Choose these tables from your schema: `gold_client_daily_pnl`, `gold_daily_symbol_volume`, `gold_funding_daily`, `gold_ib_daily_performance`, `gold_net_exposure_by_symbol`, `ref_ib_hierarchy` → **Create**.
 2. **Genie Code** opens by itself, reads the data and suggests table descriptions and example queries: review them and accept the sensible ones.
-3. **Settings**: title `MT5 交易分析助手 · <your_name>`; choose the serverless warehouse.
+3. **Configure → Settings**: title `MT5 交易分析助手 · <your_name>`; choose `hytech_workshop_sql` (or another serverless warehouse, not a Real-Time one).
 
 ## 2 · 配置 (Configure) — 10 分钟
 
 每种设置做一个例子，理解它的作用。<br>
 One example of each kind of setting, so you learn what each one is for.
 
-**Instructions（常规说明 / general instructions）** — 粘贴 (paste)：
+**Configure → Instructions（常规说明 / general instructions）** — 粘贴 (paste)：
 
 ```
 用简体中文回答；表名、列名和 SQL 保持英文。
@@ -37,7 +37,7 @@ lots 是标准手数；notional_usd 是美元名义金额。
 风险敞口用 gold_net_exposure_by_symbol：它是当前持仓的快照，没有日期。
 ```
 
-**Data（列的同义词 / column synonyms）** — 在 Data 选项卡中打开表，给这些列添加中文同义词 (open each table on the Data tab and add Chinese synonyms)：
+**Configure → Data（列的同义词 / column synonyms）** — 打开每张表，给这些列添加中文同义词 (open each table and add Chinese synonyms to these columns)：
 
 | 表 (Table) | 列 (Column) | 同义词 (Synonyms) |
 |---|---|---|
@@ -45,14 +45,14 @@ lots 是标准手数；notional_usd 是美元名义金额。
 | `gold_funding_daily` | `deposits_usd` · `withdrawals_usd` · `net_funding_usd` · `method` | 入金 · 出金 · 净入金 · 支付方式 |
 | `gold_ib_daily_performance` | `ib_name` · `rebate_usd` | 代理、IB · 返佣 |
 
-**Joins（关联 / a join）** — Add → Joins：`gold_client_daily_pnl.ib_login` = `ref_ib_hierarchy.ib_login`（多对一 many-to-one）。
+**Configure → Examples → Add → Joins（关联 / a join）**：`gold_client_daily_pnl.ib_login` = `ref_ib_hierarchy.ib_login`（多对一 many-to-one）。
 
-**SQL expressions（一个度量 + 一个筛选 / one measure + one filter）：**
+**Configure → Examples → Add → SQL expressions（一个度量 + 一个筛选 / one measure + one filter）：**
 
 - Measure `每笔名义金额 (Notional per deal)`：`SUM(gold_daily_symbol_volume.notional_usd) / SUM(gold_daily_symbol_volume.deals)`
 - Filter `加密货币品种 (Crypto symbols)`：`gold_daily_symbol_volume.asset_class = 'CRYPTO'`，同义词 (synonyms)：加密货币
 
-**Examples（示例 SQL / one trusted example SQL）** — 问题 (question)：`上周每个品牌的客户盈亏是多少？`
+**Configure → Examples → Add → Example SQL（一个示例 SQL / one example SQL）** — 问题 (question)：`上周每个品牌的客户盈亏是多少？`（把 `<你的名字>` 换成你的 schema 名中 `u_` 后面的部分，例如 `u_zhang_san` → `zhang_san` / replace `<你的名字>` with the part of your schema name after `u_`, for example `u_zhang_san` → `zhang_san`）
 
 ```sql
 SELECT brand, round(sum(trading_pnl_usd), 2) AS client_pnl_usd
@@ -61,7 +61,7 @@ WHERE deal_date >= date_sub(current_date(), 7)
 GROUP BY brand ORDER BY client_pnl_usd
 ```
 
-**Settings → Common questions（常见问题，显示为起始问题 / shown as starter questions）：** `昨天名义金额最大的 5 个品种是什么？` · `上周每个品牌的客户盈亏是多少？` · `哪个代理 (IB) 上周的返佣最多？`
+**Configure → Settings → Common questions（常见问题，显示为起始问题 / shown as starter questions）：** `昨天名义金额最大的 5 个品种是什么？` · `上周每个品牌的客户盈亏是多少？` · `哪个代理 (IB) 上周的返佣最多？`
 
 ## 3 · 测试 (Test) — 5 分钟
 

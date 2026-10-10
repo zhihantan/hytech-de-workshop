@@ -31,7 +31,7 @@ title = GENIE_TITLE.format(name=name)
 
 whs = w.api_client.do("GET", "/api/2.0/sql/warehouses").get("warehouses", [])
 serverless = sorted((x for x in whs if x.get("enable_serverless_compute") and x.get("warehouse_type") != "REALTIME"),
-                    key=lambda x: (x.get("state") != "RUNNING", x["name"]))
+                    key=lambda x: (x["name"] != "hytech_workshop_sql", x.get("state") != "RUNNING", x["name"]))
 if not serverless:
     raise ValueError("没有可用的 serverless SQL 仓库：请管理员授予 CAN USE (no serverless SQL warehouse you can use: ask the admin for CAN USE)")
 warehouse_id = serverless[0]["id"]

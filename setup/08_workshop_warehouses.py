@@ -4,14 +4,14 @@
 # MAGIC
 # MAGIC 实验 09（AI/BI 仪表盘）和实验 10（Genie Agent、Genie One）需要学员对 SQL 仓库有 **CAN USE** 权限。本笔记本：
 # MAGIC
-# MAGIC 1. 找到工作坊的 serverless SQL 仓库（不是 Real-Time 仓库），授予学员组 CAN USE。Genie 和成本仪表盘都用它。
+# MAGIC 1. 工作坊的 serverless SQL 仓库：用参数 `warehouse_id` 指定的仓库；不指定时找到或创建 `hytech_workshop_sql`（Small，空闲 10 分钟自动停止），授予学员组 CAN USE。Genie 用它。不会授权任意一个正在运行的仓库：它可能是生产仓库。
 # MAGIC 2. 如果工作区已开启 **Lakehouse RT** 预览，找到或创建 Real-Time 仓库 `hytech_workshop_rt`（Small、空闲 10 分钟自动停止），并授予学员组 CAN USE。未开启时打印管理员步骤，然后继续。
 # MAGIC
 # MAGIC 可以重复运行。
 # MAGIC
 # MAGIC Labs 09 (AI/BI dashboard) and 10 (Genie Agent, Genie One) need **CAN USE** on a SQL warehouse for the participants. This notebook:
 # MAGIC
-# MAGIC 1. Finds the workshop's serverless SQL warehouse (not a Real-Time one) and grants the participant group CAN USE. Genie and the cost dashboard use it.
+# MAGIC 1. The workshop's serverless SQL warehouse: the one named by the `warehouse_id` parameter, or else finds or creates `hytech_workshop_sql` (Small, stops after 10 idle minutes), and grants the participant group CAN USE. Genie uses it. It never grants whichever warehouse happens to be running: that may be a production warehouse.
 # MAGIC 2. If the workspace has the **Lakehouse RT** preview on, finds or creates the Real-Time warehouse `hytech_workshop_rt` (Small, stops after 10 idle minutes) and grants the participant group CAN USE. If the preview is off, it prints the admin steps and carries on.
 # MAGIC
 # MAGIC Safe to re-run.
@@ -19,7 +19,7 @@
 # COMMAND ----------
 
 dbutils.widgets.text("participant_group", "de_workshop_sz")
-dbutils.widgets.text("warehouse_id", "", "SQL warehouse ID (empty = pick a serverless one)")
+dbutils.widgets.text("warehouse_id", "", "SQL warehouse ID (empty = hytech_workshop_sql)")
 dbutils.widgets.text("rt_warehouse_name", "hytech_workshop_rt")
 
 group = dbutils.widgets.get("participant_group").strip()
@@ -32,6 +32,8 @@ from databricks.sdk import WorkspaceClient
 
 w = WorkspaceClient()
 HOST = w.config.host.rstrip("/")
+SQL_NAME = "hytech_workshop_sql"
+TAGS = {"custom_tags": [{"key": "workshop", "value": "hytech_de_2026"}, {"key": "managed_by", "value": "master_setup"}]}
 ADMIN_STEPS = """
 创建 Real-Time 仓库失败，见上面的错误。如果是因为 Lakehouse RT 还没开启，管理员步骤如下：
 (Creating the Real-Time warehouse failed: see the error above. If it is because Lakehouse RT is not enabled yet, the admin steps are:)
@@ -61,15 +63,24 @@ def grant_use(wid, label):
         print(f"⚠️  could not grant CAN_USE on {label} to {group} ->", str(e).splitlines()[0][:200])
 
 
-# 1 · serverless 仓库（Genie 不支持 Real-Time 仓库）(the serverless warehouse; Genie doesn't run on Real-Time warehouses)
+# 1 · 工作坊的 SQL 仓库（Genie 不支持 Real-Time 仓库）：只授权指定的仓库或工作坊自己的仓库
+# (the workshop SQL warehouse; Genie doesn't run on Real-Time warehouses): only the named one or the workshop's own
 if not warehouse_id:
-    candidates = sorted((x for x in warehouses() if x.get("enable_serverless_compute") and x.get("warehouse_type") != "REALTIME"),
-                        key=lambda x: (x.get("state") != "RUNNING", x["name"]))
-    if not candidates:
-        raise ValueError("找不到 serverless SQL 仓库：请设置 warehouse_id 参数 (no serverless SQL warehouse found: set the warehouse_id parameter)")
-    warehouse_id = candidates[0]["id"]
-grant_use(warehouse_id, "the workshop warehouse")
-print("warehouse_id =", warehouse_id)
+    own = next((x for x in warehouses() if x["name"] == SQL_NAME), None)
+    if own is None:
+        try:
+            own = w.api_client.do("POST", "/api/2.0/sql/warehouses", body={
+                "name": SQL_NAME, "warehouse_type": "PRO", "enable_serverless_compute": True, "cluster_size": "Small",
+                "min_num_clusters": 1, "max_num_clusters": 3, "auto_stop_mins": 10, "tags": TAGS})
+            print("✅ created serverless SQL warehouse", SQL_NAME, own["id"])
+        except Exception as e:  # noqa: BLE001 - e.g. serverless SQL is not enabled
+            print("⚠️  无法创建 SQL 仓库，请设置 warehouse_id 参数 (could not create the SQL warehouse: set the warehouse_id parameter) ->",
+                  str(e).splitlines()[0][:300])
+    warehouse_id = own["id"] if own else ""
+if warehouse_id:
+    name = next((x["name"] for x in warehouses() if x["id"] == warehouse_id), warehouse_id)
+    grant_use(warehouse_id, name)
+    print("warehouse =", name, warehouse_id)
 
 # COMMAND ----------
 
@@ -80,8 +91,7 @@ if rt is None:
         rt = w.api_client.do("POST", "/api/2.0/sql/warehouses", body={
             "name": rt_name, "warehouse_type": "REALTIME", "cluster_size": "Small", "auto_stop_mins": 10,
             "min_num_clusters": 1, "max_num_clusters": 1,
-            "enable_serverless_compute": True,
-            "tags": {"custom_tags": [{"key": "workshop", "value": "hytech_de_2026"}, {"key": "managed_by", "value": "master_setup"}]},
+            "enable_serverless_compute": True, "tags": TAGS,
         })
         print("✅ created Real-Time warehouse", rt_name, rt["id"])
     except Exception as e:  # noqa: BLE001 - the preview is off or the region is not supported

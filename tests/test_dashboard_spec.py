@@ -86,3 +86,11 @@ def test_lab_09_builds_the_same_datasets_as_the_catch_up():
         assert d["queryLines"][0].strip() in lab, d["name"]
         assert f"`{d['name']}`" in lab
     assert "LIMIT 10" in lab and "参考 (reference)" in lab
+
+
+def test_lab_09_hints_the_name_the_fallback_and_where_query_history_is():
+    with open(os.path.join(HERE, "..", "labs", "09_AIBI_Dashboard_Lakehouse_RT.md"), encoding="utf-8") as fh:
+        lab = fh.read()
+    assert "u_zhang_san" in lab   # <你的名字> = schema 名中 u_ 后面的部分 (the part after u_ in your schema name)
+    assert "source_schema" in lab and "solutions" in lab
+    assert "Query History" in lab and "→ Query history" not in lab

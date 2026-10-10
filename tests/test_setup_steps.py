@@ -33,9 +33,45 @@ def test_cost_dashboard_never_picks_a_realtime_warehouse():
 
 
 def test_the_realtime_warehouse_is_created_with_a_cluster_range():
-    # 在 fevm 上实测：不写 max_num_clusters 时 API 拒绝（0 is not a valid value for max_num_clusters）
-    # Live on fevm: without max_num_clusters the API rejects the create (0 is not a valid value for max_num_clusters)
+    # 在测试工作区实测：不写 max_num_clusters 时 API 拒绝（0 is not a valid value for max_num_clusters）
+    # Live on a test workspace: without max_num_clusters the API rejects the create (0 is not a valid value for max_num_clusters)
     text = read("setup/08_workshop_warehouses.py")
     assert '"min_num_clusters": 1' in text and '"max_num_clusters": 1' in text
     # 创建失败不一定是因为预览没开：先看错误 (a failed create is not always the preview being off: read the error first)
     assert "见上面的错误" in text and "see the error above" in text
+
+
+def test_the_warehouse_step_only_grants_a_warehouse_the_workshop_owns():
+    # 不能把学员加到任意一个正在运行的仓库上：它可能是生产仓库 (never grant participants whichever warehouse is running: it may be production)
+    text = read("setup/08_workshop_warehouses.py")
+    assert '"hytech_workshop_sql"' in text and '{"key": "managed_by", "value": "master_setup"}' in text
+    assert 'x.get("state") != "RUNNING"' not in text
+
+
+def test_teardown_removes_both_workshop_warehouses_and_tolerates_tags_without_values():
+    text = read("setup/99_teardown.py")
+    assert "hytech_workshop_sql" in text and "hytech_workshop_rt" in text
+    assert 't["value"]' not in text
+
+
+def test_the_catch_ups_prefer_the_workshop_sql_warehouse():
+    for path in ("labs/09b_Dashboard_Catch_Up.py", "labs/10b_Genie_Catch_Up.py"):
+        assert '"hytech_workshop_sql"' in read(path), path
+
+
+NEW_FILES = [
+    "setup/08_workshop_warehouses.py", "jobs/task_logger.py", "labs/staging_feed.py", "labs/run_if_spec.py",
+    "labs/dashboard_spec.py", "labs/genie_spec.py", "labs/03c_Data_Quality_and_Monitoring.py",
+    "labs/03d_Run_If_Dependencies.py", "labs/04c_Failure_Recovery_and_Backfill.py", "labs/09b_Dashboard_Catch_Up.py",
+    "labs/10b_Genie_Catch_Up.py", "labs/09_AIBI_Dashboard_Lakehouse_RT.md", "labs/10_Genie_Agent.md",
+    "labs/03_pipeline/staging/06_staging_mt5_hk01.sql", "tests/test_setup_steps.py", "tests/test_dashboard_spec.py",
+    "tests/test_genie_spec.py", "tests/test_lab_04c.py", "tests/test_lab_notebooks.py", "tests/test_staging_feed.py",
+    "tests/test_staging_feed_ui_mode.py", "tests/test_run_if_spec.py", "tests/test_docs.py",
+]
+
+
+def test_new_files_name_no_internal_workspace():
+    # 公开代码库：新文件中不出现内部工作区的名称 (public repo: no internal workspace names in the new files)
+    marker = "fe" + "vm"   # 拆开写，这一行本身不触发检查 (split so this line doesn't trip the check)
+    for path in NEW_FILES:
+        assert marker not in read(path).lower().replace("-", ""), path

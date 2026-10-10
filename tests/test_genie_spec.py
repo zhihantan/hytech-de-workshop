@@ -60,13 +60,31 @@ def test_text_fields_are_arrays_and_there_is_one_text_instruction_block():
         assert b["answer"] == [{"format": "SQL", "content": b["answer"][0]["content"]}] and b["answer"][0]["content"]
 
 
+SQL_WORDS = {"sum", "count", "avg", "min", "max", "and", "or", "not", "case", "when", "then", "else", "end", "is",
+             "null", "in", "like", "distinct", "as", "coalesce", "round", "date_sub", "current_date"}
+
+
+def unqualified_columns(sql):
+    """去掉字符串和「表.列」之后剩下的小写标识符 (lowercase identifiers left after removing strings and table.column)."""
+    text = re.sub(r"'[^']*'", " ", sql)
+    text = re.sub(r"`?\b\w+`?\.`?\w+`?", " ", text)
+    return [w for w in re.findall(r"\b[a-z_][a-z0-9_]*\b", text) if w not in SQL_WORDS]
+
+
+def test_the_column_checker_catches_an_unqualified_column():
+    assert unqualified_columns("SUM(gold_x.a) / SUM(b)") == ["b"]
+    assert unqualified_columns("gold_x.asset_class = 'CRYPTO' AND region = 'SG'") == ["region"]
+    assert unqualified_columns("SUM(gold_x.a) / SUM(`gold_x`.`b`)") == []
+
+
 def test_joins_and_snippets_qualify_every_column():
     for j in S["instructions"]["join_specs"]:
         assert len(j["sql"]) == 2 and j["sql"][1].startswith("--rt=FROM_RELATIONSHIP_TYPE_")
         assert j["left"]["alias"] in j["sql"][0] and j["right"]["alias"] in j["sql"][0]
+        assert not unqualified_columns(j["sql"][0]), j["sql"][0]
     for kind in ("measures", "filters"):
         for s in S["instructions"]["sql_snippets"][kind]:
-            assert re.search(r"\b(gold|ref)_\w+\.\w+", s["sql"][0]), s
+            assert not unqualified_columns(s["sql"][0]), s
 
 
 def test_the_instructions_ask_for_simplified_chinese_and_full_numbers():
@@ -99,3 +117,13 @@ def test_lab_10_configures_the_same_agent_as_the_catch_up():
     for table in gs.GENIE_TABLES:
         assert f"`{table}`" in lab
     assert "ib_login" in lab and "参考 (reference)" in lab
+
+
+def test_lab_10_says_where_each_setting_lives_and_uses_the_right_words():
+    with open(os.path.join(HERE, "..", "labs", "10_Genie_Agent.md"), encoding="utf-8") as fh:
+        lab = fh.read()
+    for place in ("Configure → Instructions", "Configure → Data", "Configure → Examples", "Settings → Common questions"):
+        assert place in lab, place
+    # 只有带参数的示例 SQL 和 UC 函数才算 trusted (only parameterized example SQL and UC functions count as trusted)
+    assert "trusted" not in lab.lower() and "可信" not in lab
+    assert "u_zhang_san" in lab   # <你的名字> 的提示 (the hint for <你的名字>)

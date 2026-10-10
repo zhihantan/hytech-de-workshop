@@ -33,7 +33,7 @@ parent = f"/Workspace/Users/{me}"
 whs = w.api_client.do("GET", "/api/2.0/sql/warehouses").get("warehouses", [])
 realtime = sorted((x for x in whs if x.get("warehouse_type") == "REALTIME"), key=lambda x: x["name"] != "hytech_workshop_rt")
 serverless = sorted((x for x in whs if x.get("enable_serverless_compute") and x.get("warehouse_type") != "REALTIME"),
-                    key=lambda x: (x.get("state") != "RUNNING", x["name"]))
+                    key=lambda x: (x["name"] != "hytech_workshop_sql", x.get("state") != "RUNNING", x["name"]))
 warehouse = (realtime or serverless or [None])[0]
 if warehouse is None:
     raise ValueError("没有可用的 SQL 仓库：请管理员授予 CAN USE (no SQL warehouse you can use: ask the admin for CAN USE)")
