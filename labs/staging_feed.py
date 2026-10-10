@@ -246,9 +246,23 @@ def batch_counts(spark, cs: str, path: str) -> dict:
     return counts
 
 
-def latest_update_flows(spark, cs: str) -> dict:
-    """最近一次管道更新中每张表的最终状态，来自事件日志。
-    The final status of every table in the latest pipeline update, from the event log."""
+def latest_update_flows(spark, cs: str, wait_seconds: int = 180) -> dict:
+    """最近一次管道更新中每张表的最终状态，来自事件日志。事件日志会晚几秒写入，所以先等到这次更新的最终状态出现。
+    The final status of every table in the latest pipeline update, from the event log. The event log lands a few
+    seconds late, so first wait until the update's final state is there."""
+    deadline = time.time() + wait_seconds
+    while True:
+        finished = spark.sql(f"""
+          WITH latest AS (
+            SELECT origin.update_id AS update_id FROM {cs}.pipeline_event_log
+            WHERE event_type = 'create_update' ORDER BY timestamp DESC LIMIT 1)
+          SELECT count(*) AS n FROM {cs}.pipeline_event_log JOIN latest ON origin.update_id = latest.update_id
+          WHERE event_type = 'update_progress'
+            AND details:update_progress.state IN ('COMPLETED', 'FAILED', 'CANCELED')""").first()["n"]
+        if finished or time.time() > deadline:
+            break
+        print("waiting for the event log ...")
+        time.sleep(10)
     rows = spark.sql(f"""
       WITH latest AS (
         SELECT origin.update_id AS update_id FROM {cs}.pipeline_event_log
