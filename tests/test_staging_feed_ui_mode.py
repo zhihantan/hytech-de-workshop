@@ -123,7 +123,8 @@ def raised_messages(path):
             yield node.lineno, "".join(str(p.value) for p in parts if isinstance(p.value, str))
 
 
-@pytest.mark.parametrize("path", ["labs/staging_feed.py", "labs/03d_Run_If_Dependencies.py", "labs/03c_Data_Quality_and_Monitoring.py"])
+@pytest.mark.parametrize("path", ["labs/staging_feed.py", "labs/03d_Run_If_Dependencies.py", "labs/03c_Data_Quality_and_Monitoring.py",
+                                  "labs/04c_Failure_Recovery_and_Backfill.py"])
 def test_participant_facing_errors_are_chinese_first_and_english(path):
     for line, text in raised_messages(path):
         assert CJK.search(text) and re.search(r"[A-Za-z]{3,}", text), f"{path}:{line}: {text!r}"

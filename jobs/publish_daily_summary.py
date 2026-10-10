@@ -31,7 +31,7 @@ cs = f"{catalog}.{schema}"
 latest = spark.sql(f"SELECT max(deal_date) AS d FROM {cs}.gold_daily_symbol_volume WHERE deal_date <= current_date()").first()["d"]
 requested = dbutils.widgets.get("report_date").strip()
 # 回填时作业传入 {{backfill.iso_date}}；平时留空 = 最新一天 (a backfill passes {{backfill.iso_date}}; otherwise empty = the latest day)
-day = date.fromisoformat(requested) if requested else latest
+day = date.fromisoformat(requested[:10]) if requested else latest   # iso_date 或 iso_datetime 都可以 (iso_date or iso_datetime)
 if not spark.sql(f"SELECT count(*) AS n FROM {cs}.gold_daily_symbol_volume WHERE deal_date = '{day}'").first()["n"]:
     dbutils.notebook.exit(f"no trades on {day}: nothing to summarise")
 totals = spark.sql(f"""

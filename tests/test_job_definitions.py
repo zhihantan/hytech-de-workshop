@@ -28,3 +28,9 @@ def test_dq_gate_merges_per_update():
     text = read("jobs/dq_gate.py")
     assert "MERGE INTO {cs}.ops_dq_results" in text
     assert 'mode("append")' not in text
+
+
+def test_publish_daily_summary_accepts_a_backfill_date_or_datetime():
+    # Run backfill 的参数可以选 {{backfill.iso_date}} 或 {{backfill.iso_datetime}}：两种都要能用
+    # Run backfill can pass {{backfill.iso_date}} or {{backfill.iso_datetime}}: both must work
+    assert "date.fromisoformat(requested[:10])" in read("jobs/publish_daily_summary.py")

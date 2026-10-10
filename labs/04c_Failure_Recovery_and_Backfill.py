@@ -85,16 +85,47 @@ def wait_run(run_id, timeout_minutes=45):
         if run["state"].get("life_cycle_state") in ("TERMINATED", "SKIPPED", "INTERNAL_ERROR"):
             return run
         if time.time() > deadline:
-            raise TimeoutError(f"run {run_id} is still running")
-        print("still running ...")
+            raise TimeoutError(f"运行 {run_id} 还没结束：结束后再运行这个单元格 (run {run_id} is still running: run this cell again when it has finished)")
+        print("运行中 (still running) ...")
         time.sleep(20)
 
 
-def latest_run():
-    runs = w.api_client.do("GET", "/api/2.2/jobs/runs/list", query={"job_id": job_id, "limit": 1}).get("runs", [])
-    if not runs:
-        raise RuntimeError("这个作业还没有运行过：先点 Run now (the job has not run yet: click Run now first)")
-    return wait_run(runs[0]["run_id"])
+def latest_run(since_ms=0, wait_minutes=10):
+    """等你点 Run now：取这个作业在 since_ms 之后启动的最近一次运行，并等它结束。
+    Waits for you to click Run now: takes the job's latest run started after since_ms, and waits for it to finish."""
+    deadline = time.time() + wait_minutes * 60
+    while True:
+        runs = w.api_client.do("GET", "/api/2.2/jobs/runs/list", query={"job_id": job_id, "limit": 1}).get("runs", [])
+        if runs and runs[0]["start_time"] >= since_ms:
+            return wait_run(runs[0]["run_id"])
+        if time.time() > deadline:
+            raise RuntimeError("没有找到新的运行：先在作业页面点 Run now，再运行这个单元格 (no new run: click Run now on the job page, then run this cell again)")
+        print("👉 等你在作业页面点 Run now (waiting for you to click Run now on the job page) ...")
+        time.sleep(15)
+
+
+def wait_repaired(run_id, wait_minutes=10):
+    """等你点 Repair run：等这次运行有了修复记录，再等修复结束。
+    Waits for you to click Repair run: waits until the run has a repair in its history, then for the repair to finish."""
+    deadline = time.time() + wait_minutes * 60
+    while True:
+        run = w.api_client.do("GET", "/api/2.2/jobs/runs/get", query={"run_id": run_id, "include_history": "true"})
+        if any(h.get("type") == "REPAIR" for h in run.get("repair_history", [])):
+            return wait_run(run_id)
+        if time.time() > deadline:
+            raise RuntimeError("这次运行还没有修复：先点 Repair run，再运行这个单元格 (the run has not been repaired: click Repair run, then run this cell again)")
+        print("👉 等你点 Repair run (waiting for you to click Repair run) ...")
+        time.sleep(15)
+
+
+def backfill_runs(dates):
+    """这个作业中，每个回填日期 (report_date) 最近的一次运行 (this job's latest run for each backfill date, report_date)."""
+    found = {}
+    for r in w.api_client.do("GET", "/api/2.2/jobs/runs/list", query={"job_id": job_id, "limit": 25}).get("runs", []):
+        d = {p["name"]: p.get("value") or "" for p in r.get("job_parameters", [])}.get("report_date", "")[:10]
+        if d in dates and d not in found:   # 列表从新到旧 (the list is newest first)
+            found[d] = r["run_id"]
+    return found
 
 
 def task_states(run):
@@ -107,7 +138,7 @@ def task_states(run):
     return {k: v[1] for k, v in latest.items()}, {k: v[0] + 1 for k, v in latest.items()}
 
 
-print("job:", names["job"], job_id, "| pipeline:", names["pipeline"], "| staging file:", staging_file)
+print("作业 (job):", names["job"], job_id, "| 管道 (pipeline):", names["pipeline"], "| 预发布文件 (staging file):", staging_file)
 
 # COMMAND ----------
 
@@ -151,11 +182,14 @@ if AUTO:
             t["max_retries"] = 1
             t["email_notifications"] = {"on_failure": [me]}
     w.api_client.do("POST", "/api/2.2/jobs/reset", body={"job_id": job_id, "new_settings": s})
-    print("✅ job and pipeline prepared")
+    print("✅ 作业和管道已准备好 (job and pipeline prepared)")
 
 s = job_settings()
 params = {p["name"]: p.get("default") for p in s.get("parameters", [])}
-rp = next(t for t in s["tasks"] if t["task_key"] == "run_pipeline")
+rp = next((t for t in s["tasks"] if t["task_key"] == "run_pipeline"), None)
+check("任务 run_pipeline 存在 (the job has a task named run_pipeline)", rp is not None,
+      "" if rp else "作业中的任务 (tasks in the job): " + ", ".join(sorted(t["task_key"] for t in s["tasks"])))
+rp = rp or {}
 conf = w.api_client.do("GET", f"/api/2.0/pipelines/{pipeline_id}")["spec"].get("configuration") or {}
 text = w.workspace.download(staging_file).read().decode("utf-8")
 check("valid_trade_price 是 FAIL UPDATE (valid_trade_price is FAIL UPDATE)", switch_rule(text, "valid_trade_price", "FAIL") == text)
@@ -176,14 +210,15 @@ check("run_pipeline 失败时发邮件 (run_pipeline emails on failure)", bool((
 # COMMAND ----------
 
 bad_batch = write_batch(spark, catalog, my_schema, "bad_prices")
+bad_batch_at = int(time.time() * 1000) - 30_000   # 只接受这之后启动的运行；30 秒余量 (only runs started after this count; 30 s slack)
 if AUTO:
-    print("started run", run_now())
+    print("已启动运行 (started run)", run_now())
 else:
     print("👉 在作业页面点 Run now，然后运行下一个单元格 (click Run now on the job page, then run the next cell)")
 
 # COMMAND ----------
 
-run = latest_run()
+run = latest_run(since_ms=bad_batch_at)
 broken_run_id = run["run_id"]
 states, attempts = task_states(run)
 display(spark.createDataFrame(sorted((k, v or "", attempts[k]) for k, v in states.items()), "task string, result string, attempts int"))
@@ -219,9 +254,12 @@ late_batches = [write_batch(spark, catalog, my_schema, "clean") for _ in range(2
 
 # COMMAND ----------
 
-failed_task = max((t for t in run["tasks"] if t["task_key"] == "run_pipeline"), key=lambda t: t.get("attempt_number", 0))
-output = w.api_client.do("GET", "/api/2.2/jobs/runs/get-output", query={"run_id": failed_task["run_id"]})
-print((output.get("error") or "")[:800])
+failed_task = max((t for t in run["tasks"] if t["task_key"] == "run_pipeline"), key=lambda t: t.get("attempt_number", 0), default=None)
+if failed_task:
+    output = w.api_client.do("GET", "/api/2.2/jobs/runs/get-output", query={"run_id": failed_task["run_id"]})
+    print((output.get("error") or "")[:800])
+else:
+    print("这次运行中没有 run_pipeline 任务 (this run has no run_pipeline task)")
 
 # COMMAND ----------
 
@@ -237,11 +275,11 @@ print((output.get("error") or "")[:800])
 # MAGIC %md
 # MAGIC ## 5 · 修复并用 Repair run 恢复 (Fix it and recover with a Repair run)
 # MAGIC
-# MAGIC 1. **修复原因：** 策略修复（把 `valid_trade_price` 改为 `ON VIOLATION DROP ROW`，坏行进入隔离表）；或源头修复（删除坏文件，在管道中对预发布表做完全刷新，见 03c 第 7 步）。
+# MAGIC 1. **修复原因（策略修复）：** 把 `valid_trade_price` 改为 `ON VIOLATION DROP ROW` 并保存：坏行进入隔离表，好行继续处理。另一种方法是源头修复：删除**所有**带负价格的文件，再对预发布表做完全刷新，见 03c 第 7 步。本实验用策略修复，下面的检查也按它验证。
 # MAGIC 2. **Repair run：** 在这次失败运行的页面点 **Repair run**。它只重跑没有成功的任务和依赖它们的任务，仍然是同一次运行，并保留修复历史。
 # MAGIC 3. 管道从上次成功的位置继续：卡住的坏批次和坏着时到达的两个文件都会被处理。**流式表不需要手动回填数据。**
 # MAGIC
-# MAGIC 1. **Fix the cause:** a policy fix (change `valid_trade_price` to `ON VIOLATION DROP ROW`; the bad rows go to quarantine), or a source fix (delete the bad file and fully refresh the staging tables in the pipeline; lab 03c step 7).
+# MAGIC 1. **Fix the cause (the policy fix):** change `valid_trade_price` to `ON VIOLATION DROP ROW` and save: the bad rows go to the quarantine and the good rows carry on. The other way is a source fix: delete **every** file with negative prices, then fully refresh the staging tables, as in lab 03c step 7. This lab uses the policy fix, and the checks below verify it.
 # MAGIC 2. **Repair run:** on the page of the failed run, click **Repair run**. It re-runs only the unsuccessful tasks and the tasks that depend on them, inside the same run, with a repair history.
 # MAGIC 3. The pipeline continues from where it last succeeded: the stuck bad batch and the two files that arrived meanwhile are all processed. **Streaming tables need no manual data backfill.**
 
@@ -252,17 +290,24 @@ if AUTO:
     # 要点 2 (Key point 2) · 修复运行：只重跑失败的任务及其下游，仍是同一次运行 (a repair re-runs only the failed tasks and their dependants, inside the same run)
     repair = w.api_client.do("POST", "/api/2.2/jobs/runs/repair",
                              body={"run_id": broken_run_id, "rerun_all_failed_tasks": True, "rerun_dependent_tasks": True})
-    print("repair", repair.get("repair_id"))
+    print("修复 (repair)", repair.get("repair_id"))
 else:
-    print("👉 修复原因并点 Repair run，结束后运行下一个单元格 (fix the cause and click Repair run, then run the next cell)")
+    print("👉 把 valid_trade_price 改为 ON VIOLATION DROP ROW 并保存，然后点 Repair run，再运行下一个单元格 "
+          "(change valid_trade_price to ON VIOLATION DROP ROW and save, click Repair run, then run the next cell)")
 
 # COMMAND ----------
 
-run = wait_run(broken_run_id)
+run = wait_repaired(broken_run_id)
 states, _ = task_states(run)
+check("valid_trade_price 是 DROP ROW：策略修复 (valid_trade_price is DROP ROW: the policy fix)",
+      price_rule_action(w.workspace.download(staging_file).read().decode("utf-8")) == "DROP")
 check("修复后运行成功 (after the repair the run SUCCEEDED)", run["state"].get("result_state") == "SUCCESS", run["state"].get("result_state"))
 check("日报生成了 (the daily summary ran)", states.get("publish_daily_summary") == "SUCCESS", states.get("publish_daily_summary"))
 for path in [bad_batch] + late_batches:
+    if not os.path.exists(path):
+        check(f"批次 {os.path.basename(path)} 已完整处理 (batch fully processed)", False,
+              "文件已被删除：本实验用策略修复，见第 5 步 (the file was deleted: this lab uses the policy fix, see step 5)")
+        continue
     c = batch_counts(spark, cs, path)
     want = c["file"] - (5 if path == bad_batch else 0)
     check(f"批次 {os.path.basename(path)} 已完整处理 (batch fully processed)", c["silver"] == want, str(c))
@@ -288,15 +333,27 @@ for path in [bad_batch] + late_batches:
 days = [r["d"] for r in spark.sql(
     "SELECT DISTINCT deal_date AS d FROM gold_daily_symbol_volume WHERE deal_date <= current_date() ORDER BY d DESC LIMIT 3").collect()]
 latest_day, missed = days[0], sorted(days[1:])
-print(f"latest day: {latest_day} | backfill range: {missed[0]} → {missed[-1]} (every 1 day, report_date = {{{{backfill.iso_date}}}})")
+print(f"最新一天 (latest day): {latest_day} | 回填范围 (backfill range): {missed[0]} → {missed[-1]} "
+      f"| 间隔 1 天 (every 1 day) | report_date = {{{{backfill.iso_date}}}}")
 if AUTO:
     for d in missed:
         r = wait_run(run_now({"report_date": str(d)}))
-        print(d, r["state"].get("result_state"))
+        print(d, "回填运行 (backfill run):", r["state"].get("result_state"))
 
 # COMMAND ----------
 
 # 要点 3 (Key point 3) · 日报按 (report_date, language) 合并，所以修复和回填都不会产生重复 (the summary merges on report_date + language, so repairs and backfills never duplicate)
+want = {str(d) for d in missed}
+found, deadline = backfill_runs(want), time.time() + 5 * 60
+while len(found) < len(want) and time.time() < deadline:   # 等 Run backfill 为每个日期启动运行 (wait for Run backfill to start a run per date)
+    print("👉 等待回填运行 (waiting for the backfill runs):", ", ".join(sorted(want - set(found))))
+    time.sleep(20)
+    found = backfill_runs(want)
+if len(found) < len(want):
+    print("⚠️ 没有找到这些日期的回填运行：先启动 Run backfill，再运行这个单元格 "
+          "(no backfill run for these dates: start Run backfill, then run this cell again):", ", ".join(sorted(want - set(found))))
+for d, run_id in sorted(found.items()):
+    print(d, "回填运行 (backfill run):", wait_run(run_id)["state"].get("result_state"))
 per_day = {r["report_date"]: r["n"] for r in spark.sql(
     "SELECT report_date, count(*) AS n FROM gold_daily_commentary GROUP BY report_date").collect()}
 for d in [latest_day] + missed:
