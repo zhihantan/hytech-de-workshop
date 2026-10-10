@@ -86,3 +86,16 @@ def test_the_catch_up_never_overwrites_the_agent_configured_by_hand():
     # Lab 10 has participants title their own agent "MT5 交易分析助手 · <your_name>"; 10b updates by title, so it needs another title
     assert gs.GENIE_TITLE.format(name="zhang_wei") != "MT5 交易分析助手 · zhang_wei"
     assert "参考" in gs.GENIE_TITLE and "reference" in gs.GENIE_TITLE
+
+
+def test_lab_10_configures_the_same_agent_as_the_catch_up():
+    # 手动配置（实验 10）和补课（10b）必须一致 (the hand-configured agent, lab 10, and the catch-up, 10b, must match)
+    with open(os.path.join(HERE, "..", "labs", "10_Genie_Agent.md"), encoding="utf-8") as fh:
+        lab = fh.read()
+    for line in gs.INSTRUCTIONS:
+        assert line.split("。(")[0] + "。" in lab, line   # 实验里只粘贴中文部分 (the lab pastes the Chinese part only)
+    for q in gs.SAMPLE_QUESTIONS:
+        assert q in lab
+    for table in gs.GENIE_TABLES:
+        assert f"`{table}`" in lab
+    assert "ib_login" in lab and "参考 (reference)" in lab
