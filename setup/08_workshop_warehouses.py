@@ -33,7 +33,8 @@ from databricks.sdk import WorkspaceClient
 w = WorkspaceClient()
 HOST = w.config.host.rstrip("/")
 ADMIN_STEPS = """
-Lakehouse RT 还不可用。管理员步骤 (Lakehouse RT is not available yet. Admin steps):
+创建 Real-Time 仓库失败，见上面的错误。如果是因为 Lakehouse RT 还没开启，管理员步骤如下：
+(Creating the Real-Time warehouse failed: see the error above. If it is because Lakehouse RT is not enabled yet, the admin steps are:)
   1. 请 Databricks 客户团队为账户开启 Lakehouse//RT Beta (ask the Databricks account team to enable the Lakehouse//RT Beta for the account)
   2. 工作区菜单 → Previews → 搜索 "Lakehouse RT" → 开启 (workspace menu → Previews → search "Lakehouse RT" → enable)
   3. 重新运行本笔记本，或手动创建 Real-Time 仓库（Small，自动停止 10 分钟）并授予学员组 Can use
@@ -78,6 +79,7 @@ if rt is None:
     try:
         rt = w.api_client.do("POST", "/api/2.0/sql/warehouses", body={
             "name": rt_name, "warehouse_type": "REALTIME", "cluster_size": "Small", "auto_stop_mins": 10,
+            "min_num_clusters": 1, "max_num_clusters": 1,
             "enable_serverless_compute": True,
             "tags": {"custom_tags": [{"key": "workshop", "value": "hytech_de_2026"}, {"key": "managed_by", "value": "master_setup"}]},
         })

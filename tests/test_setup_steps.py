@@ -30,3 +30,12 @@ def test_cost_dashboard_never_picks_a_realtime_warehouse():
     # The SDK parses warehouse_type = REALTIME as None (databricks-sdk 0.151), so the raw JSON must be read
     text = read("setup/07_cost_dashboard.py")
     assert '"/api/2.0/sql/warehouses"' in text and 'x.get("warehouse_type") != "REALTIME"' in text
+
+
+def test_the_realtime_warehouse_is_created_with_a_cluster_range():
+    # 在 fevm 上实测：不写 max_num_clusters 时 API 拒绝（0 is not a valid value for max_num_clusters）
+    # Live on fevm: without max_num_clusters the API rejects the create (0 is not a valid value for max_num_clusters)
+    text = read("setup/08_workshop_warehouses.py")
+    assert '"min_num_clusters": 1' in text and '"max_num_clusters": 1' in text
+    # 创建失败不一定是因为预览没开：先看错误 (a failed create is not always the preview being off: read the error first)
+    assert "见上面的错误" in text and "see the error above" in text
