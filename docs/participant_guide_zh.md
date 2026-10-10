@@ -34,14 +34,21 @@ Open `/Workspace/Shared/hytech-de-workshop/labs/00_Start_Here` → select **Serv
 | M2 | `01_Unity_Catalog` | 授权给组、视图、标签、列掩码、行过滤、血缘<br>Grants to groups, views, tags, column masks, row filters, lineage |
 | M3 | `02_Ingestion` | CTAS / COPY INTO / Auto Loader / JSON + `_rescued_data` |
 | M4 | `03_pipeline/`（先读 README）+ `03b_Explore_Pipeline`<br>`03_pipeline/` (read README first) + `03b_Explore_Pipeline` | 声明式管道：bronze → silver（AUTO CDC、期望）→ gold<br>Declarative pipelines: bronze → silver (AUTO CDC, expectations) → gold |
+| M4 | `03c_Data_Quality_and_Monitoring` · `03d_Run_If_Dependencies` | 数据质量规则（WARN / DROP / FAIL）、隔离表、血缘、事件日志；作业的 Depends on 与 Run if<br>Data-quality rules (WARN / DROP / FAIL), quarantine, lineage, event log; Depends on and Run if in a job |
 | M5 | `04_Lakeflow_Jobs.md` | 作业：if/else、for-each、Run if、修复运行、触发器<br>Jobs: if/else, for-each, Run if, repair runs, triggers |
+| M5 | `04c_Failure_Recovery_and_Backfill` | 管道失败之后：重试、修复运行、按日期回填<br>After a pipeline failure: retries, a repair run, backfill by date |
 | M6 | `05_Genie_Code.md` · `06_System_Tables` | Genie Code 提示词阶梯；成本 / 运行 / 血缘<br>Genie Code prompt ladder; cost / runs / lineage |
 | M6c | `08_Knowledge_Check.md` | 知识测验：15 道单选题 + 加分题，对应认证考试大纲<br>Knowledge check: 15 multiple-choice questions + bonus, aligned to certification exam |
-| AI | `07_AI_Functions` | `ai_query`（中文简报）、`ai_classify`、`ai_mask`<br>`ai_query` (Mandarin summary), `ai_classify`, `ai_mask` |
+| M7 | `09_AIBI_Dashboard_Lakehouse_RT.md` · `10_Genie_Agent.md` | AI/BI 仪表盘 + Lakehouse RT；Genie Agent + Genie One（补课：`09b`、`10b` 会创建单独的参考副本）<br>AI/BI dashboard + Lakehouse RT; Genie Agent + Genie One (catch-up: `09b` and `10b` create separate reference copies) |
+| AI（可选 / optional） | `07_AI_Functions` | `ai_query`（中文简报）、`ai_classify`、`ai_mask`<br>`ai_query` (Mandarin summary), `ai_classify`, `ai_mask` |
 
 每个实验都包含完整代码：逐个运行单元格，结合说明和「要点」注释理解每一步。**跟不上没关系**：直接运行下一个单元格即可。改坏了代码？从 `solutions/` 复制原始版本。
 
 Every lab has the complete code: run the cells one by one and use the notes and "Key point" comments to follow each step. **If you fall behind, no problem**: just run the next cell. Broke the code? Copy the original from `solutions/`.
+
+代码实验（03c、03d、04c）在每一步结束时用 ✅ / ❌ 检查你的结果；❌ 后面写着怎么修改。想跳过手动步骤，把顶部的 `auto` 设为 `true`。
+
+The code labs (03c, 03d, 04c) check your result with ✅ / ❌ at the end of each step; each ❌ says how to fix it. To skip the hand steps, set `auto` at the top to `true`.
 
 ## 数据是什么 (What is the data?)
 

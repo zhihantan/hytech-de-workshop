@@ -84,10 +84,14 @@ Full checklist for Hytech's admin: [`docs/setup_guide_triones.md`](docs/setup_gu
 | M2 Unity Catalog | `01_Unity_Catalog` — 授权、视图、标签、列掩码、行过滤器<br>`01_Unity_Catalog` — grants, views, tags, column mask, row filter | `solutions/01_Unity_Catalog` |
 | M3 数据接入 (Ingestion) | `02_Ingestion` — CTAS、COPY INTO、Auto Loader、JSON + 救援数据<br>`02_Ingestion` — CTAS, COPY INTO, Auto Loader, JSON + rescued data | `solutions/02_Ingestion` |
 | M4 管道 (Pipelines) | `03_pipeline/` + `03b_Explore_Pipeline` | `solutions/pipeline/` |
+| M4 数据质量与依赖 (Data quality and dependencies) | `03c_Data_Quality_and_Monitoring` — 预发布通道 `mt5-hk-01`：WARN / DROP / FAIL、隔离表、血缘、事件日志、两种恢复<br>`03c_Data_Quality_and_Monitoring` — the `mt5-hk-01` staging lane: WARN / DROP / FAIL, quarantine, lineage, event log, two recoveries<br>`03d_Run_If_Dependencies` — 作业 `run_if_lab_<name>`：Depends on 与全部 6 种 Run if<br>`03d_Run_If_Dependencies` — job `run_if_lab_<name>`: Depends on and all six Run if conditions | `solutions/03c_Data_Quality_and_Monitoring`, `solutions/03d_Run_If_Dependencies`, `solutions/pipeline/staging/` |
 | M5 作业 (Jobs) | `04_Lakeflow_Jobs.md` (UI) + `04b_Jobs_Catch_Up` | `resources/solution.job.yml` |
+| M5 失败与恢复 (Failure and recovery) | `04c_Failure_Recovery_and_Backfill` — 重试、Succeeded with failures、修复运行、按日期回填（`report_date`）<br>`04c_Failure_Recovery_and_Backfill` — retries, Succeeded with failures, a repair run, backfill by date (`report_date`) | `solutions/04c_Failure_Recovery_and_Backfill` |
 | M6 Genie Code | `05_Genie_Code.md` 提示词梯度 + 技能 `genie_code/.assistant/skills/hytech-de-conventions`<br>`05_Genie_Code.md` prompt ladder + skill `genie_code/.assistant/skills/hytech-de-conventions` | — |
 | M6 系统表 (System tables) | `06_System_Tables`（通过受治理的 `ops` 视图）<br>`06_System_Tables` (via governed `ops` views) | `solutions/06_System_Tables` |
-| AI 函数 (AI Functions) | `07_AI_Functions` — `ai_query` (中文), `ai_classify`, `ai_mask`, 情感分析<br>`07_AI_Functions` — `ai_query` (中文), `ai_classify`, `ai_mask`, sentiment | `solutions/07_AI_Functions` |
+| M7 仪表盘 (Dashboards) | `09_AIBI_Dashboard_Lakehouse_RT.md`（UI）— 在自己的 gold 表上搭建仪表盘，把计算资源切换到 Lakehouse RT<br>`09_AIBI_Dashboard_Lakehouse_RT.md` (UI) — a dashboard on your own gold tables, compute switched to Lakehouse RT | `09b_Dashboard_Catch_Up`（参考仪表盘 / reference dashboard） |
+| M7 Genie | `10_Genie_Agent.md`（UI）— 创建并配置 Genie Agent，再通过 Genie One 提问<br>`10_Genie_Agent.md` (UI) — create and configure a Genie Agent, then ask through Genie One | `10b_Genie_Catch_Up`（参考 Agent / reference agent） |
+| AI 函数（可选，本次议程不包括）(AI Functions — optional, not on this agenda) | `07_AI_Functions` — `ai_query` (中文), `ai_classify`, `ai_mask`, 情感分析<br>`07_AI_Functions` — `ai_query` (中文), `ai_classify`, `ai_mask`, sentiment | `solutions/07_AI_Functions` |
 | M6c 总结 (Recap) | `08_Knowledge_Check` — 15 道题 + 加分题，映射到考试指南<br>`08_Knowledge_Check` — 15 questions + bonus, mapped to the exam guide | `docs/knowledge_check_answers.md` |
 
 ## 代码库布局 (Repository layout)

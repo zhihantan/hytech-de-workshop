@@ -11,9 +11,12 @@
 # MAGIC | M2 | `01_Unity_Catalog` | 授权、标签、列掩码、行过滤 |
 # MAGIC | M3 | `02_Ingestion` | CTAS · COPY INTO · Auto Loader · JSON 与 rescued data |
 # MAGIC | M4 | `03_pipeline/` + `03b_Explore_Pipeline` | Spark 声明式管道：bronze → silver → gold |
+# MAGIC | M4 | `03c_Data_Quality_and_Monitoring` · `03d_Run_If_Dependencies` | 数据质量（WARN / DROP / FAIL、隔离表）、血缘、事件日志；作业的 Depends on 与 Run if |
 # MAGIC | M5 | `04_Lakeflow_Jobs` | 作业：DQ 闸门、for-each、Run-if、修复运行 |
+# MAGIC | M5 | `04c_Failure_Recovery_and_Backfill` | 管道失败之后：重试、修复运行、按日期回填 |
 # MAGIC | M6 | `05_Genie_Code` · `06_System_Tables` | Genie Code、系统表（成本 / 运行 / 血缘） |
-# MAGIC | AI | `07_AI_Functions` | `ai_query` · `ai_classify` · `ai_mask` |
+# MAGIC | M7 | `09_AIBI_Dashboard_Lakehouse_RT` · `10_Genie_Agent` | AI/BI 仪表盘 + Lakehouse RT；Genie Agent + Genie One |
+# MAGIC | AI（可选） | `07_AI_Functions` | `ai_query` · `ai_classify` · `ai_mask`（本次议程不包括） |
 # MAGIC
 # MAGIC 运行方式：右上角选择 **Serverless** 计算，然后逐个单元格运行（Shift + Enter）。
 
