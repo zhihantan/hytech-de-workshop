@@ -50,7 +50,8 @@ for notebook in RUN_IF_JOB_NOTEBOOKS:
     except Exception:  # noqa: BLE001 - not copied yet
         missing.append(notebook)
 if missing:
-    raise FileNotFoundError(f"{missing} not in {jobs_dir}: re-run step 3 of labs/00_Start_Here to copy the new job notebooks")
+    raise FileNotFoundError(f"{jobs_dir} 中缺少 {missing}：重新运行 labs/00_Start_Here 的第 3 步，复制新的作业笔记本 "
+                            f"({missing} not in {jobs_dir}: re-run step 3 of labs/00_Start_Here to copy the new job notebooks)")
 print("schema:", f"{catalog}.{schema}", "| job notebooks:", jobs_dir, "| job:", job_name)
 
 # COMMAND ----------
@@ -127,8 +128,8 @@ def latest_run(job_id, timeout_minutes=30):
         if run["state"].get("life_cycle_state") in ("TERMINATED", "SKIPPED", "INTERNAL_ERROR"):
             return run
         if time.time() > deadline:
-            raise TimeoutError(f"run {run['run_id']} is still running")
-        print("still running ...")
+            raise TimeoutError(f"运行 {run['run_id']} 还没结束：结束后再运行这个单元格 (run {run['run_id']} is still running: run this cell again when it has finished)")
+        print("运行中 (still running) ...")
         time.sleep(20)
 
 

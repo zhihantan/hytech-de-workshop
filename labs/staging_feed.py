@@ -13,7 +13,7 @@ import re
 import shutil
 import tempfile
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import numpy as np
 import pandas as pd
@@ -82,11 +82,11 @@ def make_batch(template: pd.DataFrame, scenario: str, batch_key: int, now: datet
     * bad_prices — 5 笔负价格 → FAIL (5 negative-price trades → FAIL)
     """
     if scenario not in SCENARIOS:
-        raise ValueError(f"scenario must be one of {SCENARIOS}, got {scenario!r}")
+        raise ValueError(f"场景必须是 {SCENARIOS} 之一 (scenario must be one of {SCENARIOS}), got {scenario!r}")
     df = template[DMS_COLUMNS].head(BATCH_ROWS).copy().reset_index(drop=True)
     trades = df.index[df["Action"] != 2]
     if len(trades) < 6:
-        raise ValueError("the template needs at least 6 trades (Action 0 or 1)")
+        raise ValueError("模板至少需要 6 笔交易 (the template needs at least 6 trades, Action 0 or 1)")
     now = pd.Timestamp(now)
     now = now.tz_convert("UTC") if now.tzinfo else now.tz_localize("UTC")
     seq = np.arange(len(df), dtype=np.int64)
@@ -119,8 +119,17 @@ def switch_rule(sql_text: str, rule: str, action: str) -> str:
         if re.search(rf"CONSTRAINT\s+{rule}\b", line) and "ON VIOLATION" in line:
             lines[i], hit = re.sub(r"ON VIOLATION (FAIL UPDATE|DROP ROW)", clause, line), True
     if not hit:
-        raise ValueError(f"rule {rule} with an ON VIOLATION clause not found")
+        raise ValueError(f"找不到带 ON VIOLATION 的规则 {rule} (rule {rule} with an ON VIOLATION clause not found)")
     return "".join(lines)
+
+
+def price_rule_action(sql_text: str):
+    """valid_trade_price 现在的动作：FAIL、DROP 或 WARN；找不到这条规则时为 None。
+    The current action of valid_trade_price: FAIL, DROP or WARN; None if the rule is not there."""
+    for line in sql_text.splitlines():
+        if re.search(r"CONSTRAINT\s+valid_trade_price\b", line):
+            return "FAIL" if "FAIL UPDATE" in line else "DROP" if "DROP ROW" in line else "WARN"
+    return None
 
 
 def ws_path(p: str) -> str:
@@ -132,7 +141,7 @@ def find_pipeline_id(w, pipeline_name: str) -> str:
     """按名称找到你的管道 (find your pipeline by name)."""
     found = [p for p in w.pipelines.list_pipelines(filter=f"name LIKE '{pipeline_name}'") if p.name == pipeline_name]
     if not found:
-        raise ValueError(f"Pipeline '{pipeline_name}' not found: create it in lab 03 first")
+        raise ValueError(f"找不到管道 {pipeline_name}：先完成实验 03 (pipeline {pipeline_name} not found: create it in lab 03 first)")
     return found[0].pipeline_id
 
 
@@ -185,8 +194,8 @@ def run_pipeline(w, pipeline_id: str, full_refresh_selection=None, timeout_minut
     try:
         update_id = w.api_client.do("POST", f"/api/2.0/pipelines/{pipeline_id}/updates", body=body)["update_id"]
     except Exception as e:  # noqa: BLE001 - usually an update is already running
-        raise RuntimeError(f"could not start an update ({str(e).splitlines()[0][:160]}): "
-                           "wait for the running update to finish, then run this cell again") from e
+        raise RuntimeError("无法启动更新：等正在运行的更新结束后，再运行这个单元格 (could not start an update: "
+                           f"wait for the running update to finish, then run this cell again) -> {str(e).splitlines()[0][:160]}") from e
     deadline = time.time() + timeout_minutes * 60
     while True:
         state = w.api_client.do("GET", f"/api/2.0/pipelines/{pipeline_id}/updates/{update_id}")["update"]["state"]
@@ -194,7 +203,7 @@ def run_pipeline(w, pipeline_id: str, full_refresh_selection=None, timeout_minut
             print(f"pipeline update {update_id}: {state}")
             return state
         if time.time() > deadline:
-            raise TimeoutError(f"update {update_id} is still {state} after {timeout_minutes} min")
+            raise TimeoutError(f"更新 {update_id} 在 {timeout_minutes} 分钟后仍是 {state} (update {update_id} is still {state} after {timeout_minutes} min)")
         time.sleep(15)
 
 
@@ -212,13 +221,33 @@ def set_price_rule(w, user_name: str, action: str) -> None:
     print(f"✅ valid_trade_price -> {action} ({path})")
 
 
+def lane_status(w, catalog: str, user_name: str) -> dict:
+    """预发布通道接好了吗：staging_root 配置、transformations 中的文件、价格规则的动作，以及管道最近一次更新的状态。
+    Is the staging lane wired: the staging_root setting, the file in transformations, the price rule's action, and the
+    state of the pipeline's latest update."""
+    n = my_names(user_name)
+    pipeline_id = find_pipeline_id(w, n["pipeline"])
+    pipeline = w.api_client.do("GET", f"/api/2.0/pipelines/{pipeline_id}")
+    conf = pipeline["spec"].get("configuration") or {}
+    try:
+        path = f"{transformations_dir(w, pipeline_id, n['lab_root'])}/{STAGING_FILE}"
+        text = w.workspace.download(path).read().decode("utf-8")
+    except Exception:  # noqa: BLE001 - the file has not been moved into transformations yet
+        text = None
+    return {"staging_root": conf.get("staging_root") == staging_root(catalog, n["schema"]),
+            "file": text is not None,
+            "price_rule": price_rule_action(text) if text is not None else None,
+            "latest_update": ((pipeline.get("latest_updates") or [{}])[0]).get("state")}
+
+
 def write_batch(spark, catalog: str, schema: str, scenario: str) -> str:
     """生成一个批次文件，写入你的预发布 volume，并返回文件路径。
     Build one batch file, write it into your staging volume and return its path."""
     cols = ", ".join(f"`{c}`" for c in DMS_COLUMNS)
     template = spark.sql(TEMPLATE_SQL.format(cols=cols, cs=f"{catalog}.{schema}", n=BATCH_ROWS)).toPandas()
     if len(template) < 20:
-        raise RuntimeError(f"{catalog}.{schema}.bronze_mt5_deals has too few mt5-sg-01 deals: run your lab 03 pipeline first")
+        raise RuntimeError(f"{catalog}.{schema}.bronze_mt5_deals 中 mt5-sg-01 的成交太少：先运行实验 03 的管道 "
+                           "(too few mt5-sg-01 deals: run your lab 03 pipeline first)")
     now = datetime.now(timezone.utc)
     df = make_batch(template, scenario, batch_key=int(now.timestamp() * 1000) % 1_000_000_000, now=now)
     target = staging_dir(catalog, schema)
@@ -237,6 +266,9 @@ def write_batch(spark, catalog: str, schema: str, scenario: str) -> str:
 def batch_counts(spark, cs: str, path: str) -> dict:
     """一个批次文件的行数：文件本身、bronze、silver 和隔离表。
     Rows of one batch file: in the file itself, in bronze, in silver and in the quarantine table."""
+    if not spark.catalog.tableExists(f"{cs}.bronze_staging_mt5_deals"):
+        raise RuntimeError("预发布表还不存在：你把文件移进 transformations 并运行管道了吗？"
+                           " (the staging tables don't exist yet: did you move the file into transformations and run the pipeline?)")
     like = "%" + os.path.basename(path)
     counts = {"file": spark.read.parquet(path).count()}
     for label, table in (("bronze", "bronze_staging_mt5_deals"), ("silver", "silver_staging_mt5_deals"),
@@ -246,23 +278,39 @@ def batch_counts(spark, cs: str, path: str) -> dict:
     return counts
 
 
-def latest_update_flows(spark, cs: str, wait_seconds: int = 180) -> dict:
-    """最近一次管道更新中每张表的最终状态，来自事件日志。事件日志会晚几秒写入，所以先等到这次更新的最终状态出现。
-    The final status of every table in the latest pipeline update, from the event log. The event log lands a few
-    seconds late, so first wait until the update's final state is there."""
+def wait_for_latest_update(spark, cs: str, after=None, wait_seconds: int = 300) -> bool:
+    """等最近一次管道更新结束，并且事件日志里已有它的最终状态（事件日志会晚几秒写入）。after = 请求运行管道的时间：
+    更早创建的更新不算。等不到时提示你，并返回 False。
+    Wait until the latest pipeline update has finished and its final state is in the event log (the event log lands a
+    few seconds late). after = when the run was requested: updates created before then don't count. If it gives up,
+    it tells you what to do and returns False."""
+    since = "AND timestamp >= :after" if after else ""
+    args = {"after": after - timedelta(seconds=30)} if after else None   # 30 秒余量，防止时钟偏差 (30 s slack for clock skew)
     deadline = time.time() + wait_seconds
     while True:
         finished = spark.sql(f"""
           WITH latest AS (
             SELECT origin.update_id AS update_id FROM {cs}.pipeline_event_log
-            WHERE event_type = 'create_update' ORDER BY timestamp DESC LIMIT 1)
+            WHERE event_type = 'create_update' {since} ORDER BY timestamp DESC LIMIT 1)
           SELECT count(*) AS n FROM {cs}.pipeline_event_log JOIN latest ON origin.update_id = latest.update_id
           WHERE event_type = 'update_progress'
-            AND details:update_progress.state IN ('COMPLETED', 'FAILED', 'CANCELED')""").first()["n"]
-        if finished or time.time() > deadline:
-            break
-        print("waiting for the event log ...")
-        time.sleep(10)
+            AND details:update_progress.state IN ('COMPLETED', 'FAILED', 'CANCELED')""", args=args).first()["n"]
+        if finished:
+            return True
+        if time.time() >= deadline:
+            print("⚠️ 管道更新还没结束（或还没开始）：在管道编辑器中运行管道，结束后再运行这个单元格。")
+            print("⚠️ The pipeline update has not finished (or not started): run the pipeline in the editor, "
+                  "and run this cell again when it has finished.")
+            return False
+        print("等待管道更新结束 (waiting for the pipeline update to finish) ...")
+        time.sleep(15)
+
+
+def latest_update_flows(spark, cs: str, after=None, wait_seconds: int = 300) -> dict:
+    """最近一次管道更新中每张表的最终状态，来自事件日志（先等这次更新结束）。
+    The final status of every table in the latest pipeline update, from the event log (it first waits for that update
+    to finish)."""
+    wait_for_latest_update(spark, cs, after, wait_seconds)
     rows = spark.sql(f"""
       WITH latest AS (
         SELECT origin.update_id AS update_id FROM {cs}.pipeline_event_log

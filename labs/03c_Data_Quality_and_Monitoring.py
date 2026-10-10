@@ -29,6 +29,9 @@
 # MAGIC
 # MAGIC 前提：实验 03 的管道已成功运行，并把事件日志发布为 `pipeline_event_log`（README 第 4 步）。<br>
 # MAGIC Before you start: your lab 03 pipeline ran green and publishes its event log as `pipeline_event_log` (README step 4).
+# MAGIC
+# MAGIC ⚠️ 第 4 步会让你的管道失败，直到第 6 步才恢复。第 2 天的实验 04 需要一个绿色的管道：请至少完成第 6 步。<br>
+# MAGIC ⚠️ Step 4 makes your pipeline fail until step 6 fixes it. Day 2's lab 04 needs a green pipeline: finish at least step 6.
 
 # COMMAND ----------
 
@@ -42,6 +45,8 @@ dbutils.widgets.dropdown("start_over", "false", ["false", "true"], "从头再来
 
 # COMMAND ----------
 
+from datetime import datetime, timezone
+
 from databricks.sdk import WorkspaceClient
 
 w = WorkspaceClient()
@@ -53,19 +58,22 @@ names = my_names(me)
 my_schema = names["schema"]
 cs = f"{catalog}.{my_schema}"
 spark.sql(f"USE {cs}")
-checks = []   # (检查, 是否通过) 的列表 (list of (check, passed))
+checks = {}   # 检查 → 是否通过；重新运行一个单元格会覆盖它的结果 (check → passed; re-running a cell replaces its results)
+last_request = None   # 最近一次请求运行管道的时间 (when a pipeline run was last requested)
 
 
 def check(label, ok, detail=""):
     """打印 ✅ / ❌ 并记录结果 (print ✅ / ❌ and record the result)."""
     print(("✅ " if ok else "❌ ") + label + (f" — {detail}" if detail else ""))
-    checks.append((label, bool(ok)))
+    checks[label] = bool(ok)
     return ok
 
 
 def pipeline_run(full_refresh_selection=None):
     """auto=true 时代你运行管道；否则提醒你在管道编辑器中运行。
     With auto=true, runs the pipeline for you; otherwise reminds you to run it in the pipeline editor."""
+    global last_request
+    last_request = datetime.now(timezone.utc)
     if AUTO:
         return run_pipeline(w, find_pipeline_id(w, names["pipeline"]), full_refresh_selection)
     what = "Full refresh: " + ", ".join(full_refresh_selection) if full_refresh_selection else "Run pipeline"
@@ -129,7 +137,18 @@ if AUTO:
     wire_staging_lane(w, catalog, me, no_retries=True)
     set_price_rule(w, me, "FAIL")
 else:
-    print("👉 完成上面的第 1–3 步后继续 (do steps 1–3 above, then continue)")
+    print("👉 完成上面的第 1–3 步后，运行下一个单元格检查 (do steps 1–3 above, then run the next cell to check them)")
+
+# COMMAND ----------
+
+# 检查第 2 步；有 ❌ 就按提示修改，再运行这个单元格 (check step 2; for any ❌, fix it as shown and run this cell again)
+lane = lane_status(w, catalog, me)
+check("管道配置 staging_root 正确 (the pipeline setting staging_root is right)", lane["staging_root"],
+      "" if lane["staging_root"] else f"Settings → Configuration: staging_root = {staging_root(catalog, my_schema)}")
+check("06_staging_mt5_hk01.sql 在 transformations 中 (the file is in transformations)", lane["file"],
+      "" if lane["file"] else "把它从 03_pipeline/staging 移到 03_pipeline/transformations (move it from 03_pipeline/staging to 03_pipeline/transformations)")
+check("valid_trade_price 是 FAIL UPDATE (valid_trade_price is FAIL UPDATE)", lane["price_rule"] == "FAIL",
+      "" if lane["price_rule"] == "FAIL" else f"现在是 (now) {lane['price_rule']}：改回 ON VIOLATION FAIL UPDATE 并保存 (change it back to ON VIOLATION FAIL UPDATE and save)")
 
 # COMMAND ----------
 
@@ -146,6 +165,7 @@ pipeline_run(full_refresh_selection=list(STAGING_TABLES) if START_OVER and set(S
 
 # COMMAND ----------
 
+wait_for_latest_update(spark, cs, after=last_request)
 c = batch_counts(spark, cs, first_batch)
 print(c)
 check("bronze 收到了整个文件 (bronze got the whole file)", c["bronze"] == c["file"], str(c["bronze"]))
@@ -170,15 +190,22 @@ check("未来日期的成交被保留了，只记一次警告 (the future-dated 
 # MAGIC 下一个 DMS 文件中有 5 笔负价格的成交：价格源或复制出了问题。`valid_trade_price` 是 FAIL UPDATE 规则，所以**整个更新会失败**。写入文件，再运行管道。
 # MAGIC
 # MAGIC The next DMS file has 5 trades with negative prices: the price feed or the replication is broken. `valid_trade_price` is a FAIL UPDATE rule, so **the whole update fails**. Write the file, then run the pipeline.
+# MAGIC
+# MAGIC ⚠️ 从这里开始，你的管道每次更新都会失败，直到第 6 步修复它。第 2 天的实验 04 需要一个绿色的管道。<br>
+# MAGIC ⚠️ From here on, every update of your pipeline fails until step 6 fixes it. Day 2's lab 04 needs a green pipeline.
 
 # COMMAND ----------
 
 bad_batch = write_batch(spark, catalog, my_schema, "bad_prices")
+
+# COMMAND ----------
+
 pipeline_run()   # 预期：更新失败 (expected: the update fails)
 
 # COMMAND ----------
 
 # 要点 2 (Key point 2) · 事件日志记录了这次更新中每张表的状态 (the event log records the status of every table in this update)
+wait_for_latest_update(spark, cs, after=last_request)
 flows = latest_update_flows(spark, cs)
 display(spark.createDataFrame(sorted(flows.items()), "table string, status string"))
 check("silver_staging_mt5_deals 失败了 (FAILED)", flows.get("silver_staging_mt5_deals") == "FAILED", flows.get("silver_staging_mt5_deals"))
@@ -224,14 +251,19 @@ check("错误信息中有规则名 valid_trade_price (the error names valid_trad
 # COMMAND ----------
 
 # 要点 4 (Key point 4) · 血缘系统表（通过受治理视图 ops.table_lineage）记录了哪些表写入了哪些表 (the lineage system table, through the governed view ops.table_lineage, records which tables feed which)
-edges = spark.sql(f"""
-  SELECT DISTINCT source_table_full_name AS src, target_table_full_name AS dst
-  FROM {catalog}.ops.table_lineage
-  WHERE source_table_full_name IS NOT NULL AND target_table_full_name IS NOT NULL
-    AND (source_table_schema = '{my_schema}' OR target_table_schema = '{my_schema}')
-""").collect()
+try:
+    edges = spark.sql(f"""
+      SELECT DISTINCT source_table_full_name AS src, target_table_full_name AS dst
+      FROM {catalog}.ops.table_lineage
+      WHERE source_table_full_name IS NOT NULL AND target_table_full_name IS NOT NULL
+        AND (source_table_schema = '{my_schema}' OR target_table_schema = '{my_schema}')
+    """).collect()
+except Exception as e:  # noqa: BLE001 - e.g. the system lineage schema is not enabled in this workspace
+    edges = None
+    print("⚠️ 血缘视图不可用：请在 Catalog Explorer 中查看血缘 (the lineage view is not available: look at lineage in Catalog Explorer) ->",
+          str(e).splitlines()[0][:160])
 children = {}
-for e in edges:
+for e in edges or []:
     children.setdefault(e["src"], set()).add(e["dst"])
 
 
@@ -246,7 +278,7 @@ def downstream(table):
     return seen
 
 
-for start in ("silver_staging_mt5_deals", "silver_mt5_deals"):
+for start in ("silver_staging_mt5_deals", "silver_mt5_deals") if edges is not None else ():
     down = downstream(f"{cs}.{start}")
     print(f"{start} → {len(down)} downstream:",
           ", ".join(t.split(".")[-1] for t in down) or "(血缘还没到，几分钟后再试 / lineage not there yet: retry in a few minutes)")
@@ -271,6 +303,7 @@ pipeline_run()
 
 # COMMAND ----------
 
+wait_for_latest_update(spark, cs, after=last_request)
 c = batch_counts(spark, cs, bad_batch)
 check("坏批次中的好行进入了 silver (the good rows of the bad batch reached silver)", c["silver"] == c["file"] - 5, str(c))
 flows = latest_update_flows(spark, cs)
@@ -306,10 +339,14 @@ if AUTO:
 else:
     print("👉 先把 valid_trade_price 改回 ON VIOLATION FAIL UPDATE 并保存 (change valid_trade_price back to FAIL UPDATE and save first)")
 second_bad = write_batch(spark, catalog, my_schema, "bad_prices")
+
+# COMMAND ----------
+
 pipeline_run()   # 预期：再次失败 (expected: it fails again)
 
 # COMMAND ----------
 
+wait_for_latest_update(spark, cs, after=last_request)
 flows = latest_update_flows(spark, cs)
 check("又失败了：规则是 FAIL (it failed again: the rule is FAIL)", flows.get("silver_staging_mt5_deals") == "FAILED", flows.get("silver_staging_mt5_deals"))
 # 要点 5 (Key point 5) · 修复源头：删除所有带负价格的文件 (fix the source: delete every file with negative prices)
@@ -322,6 +359,7 @@ pipeline_run(full_refresh_selection=list(STAGING_TABLES))
 
 # COMMAND ----------
 
+wait_for_latest_update(spark, cs, after=last_request)
 neg = spark.sql("SELECT count(*) AS n FROM silver_staging_mt5_deals WHERE deal_type <> 'BALANCE' AND price <= 0").first()["n"]
 check("完全刷新后 silver 中没有负价格 (no negative prices in silver after the full refresh)", neg == 0, str(neg))
 q = spark.sql("SELECT count(*) AS n FROM silver_staging_mt5_deals_quarantine WHERE array_contains(failed_rules, 'valid_trade_price')").first()["n"]
@@ -402,8 +440,14 @@ check("更新完成 (the update completed)", flows.get("silver_staging_mt5_deals
 
 # COMMAND ----------
 
-print(f"{sum(ok for _, ok in checks)}/{len(checks)} checks passed")
+# 第 2 天的实验 04 需要一个绿色的管道 (Day 2's lab 04 needs a green pipeline)
+lane = lane_status(w, catalog, me)
+check("管道最近一次更新没有失败：可以进入第 2 天 (the pipeline's latest update did not fail: ready for Day 2)",
+      lane["latest_update"] != "FAILED",
+      "" if lane["latest_update"] != "FAILED" else
+      "完成第 6 步（或第 7 步），或者设置 start_over = true 后从头运行 (finish step 6 or step 7, or set start_over = true and run from the top)")
+print(f"{sum(checks.values())}/{len(checks)} checks passed")
 if AUTO:
-    failed = [label for label, ok in checks if not ok]
+    failed = [label for label, ok in checks.items() if not ok]
     assert not failed, f"failed checks: {failed}"
     dbutils.notebook.exit(f"{len(checks)}/{len(checks)} checks passed")
