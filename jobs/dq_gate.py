@@ -69,7 +69,19 @@ expectations = spark.sql(f"""
   )
   GROUP BY ALL
 """)
-expectations.write.mode("append").option("mergeSchema", "true").saveAsTable(f"{cs}.ops_dq_results")
+# 幂等：修复运行会再次运行 dq_gate，所以按 (update_id, dataset, expectation) 合并，而不是再追加一份
+# Idempotent: a repair run re-runs dq_gate, so merge on (update_id, dataset, expectation) instead of appending again
+if spark.catalog.tableExists(f"{cs}.ops_dq_results"):
+    expectations.createOrReplaceTempView("dq_this_update")
+    spark.sql(f"""
+      MERGE INTO {cs}.ops_dq_results t
+      USING dq_this_update s
+      ON t.update_id = s.update_id AND t.dataset = s.dataset AND t.expectation = s.expectation
+      WHEN MATCHED THEN UPDATE SET *
+      WHEN NOT MATCHED THEN INSERT *
+    """)
+else:
+    expectations.write.saveAsTable(f"{cs}.ops_dq_results")
 display(expectations)
 
 dbutils.jobs.taskValues.set(key="dq_update_id", value=update_id)

@@ -342,6 +342,7 @@ solution_job = {
         {"name": "llm_endpoint", "default": P["llm_endpoint"]},
         {"name": "webhook_url", "default": ""},
         {"name": "fail_server", "default": ""},
+        {"name": "report_date", "default": ""},
     ],
     "tasks": [
         {"task_key": "run_pipeline", "pipeline_task": {"pipeline_id": pipeline_id},
