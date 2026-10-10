@@ -14,6 +14,8 @@
 | 无服务器计算（notebook、作业、管道）和一个无服务器 SQL 仓库（Small，最多 3 个集群）| 所有实验都使用无服务器 |
 | 基础模型 API 端点可用，例如 `databricks-claude-sonnet-4-5`（或其他对话模型）| 在第 04 和 07 个实验中使用 `ai_query`。在 ap-southeast-1 区域可能需要启用*跨地域处理* |
 | 启用 Genie Code | 第 05 个实验 |
+| **Lakehouse RT（Beta）**：先请 Databricks 客户团队为账户开启，然后在工作区 Previews 中开启（见 §2b）<br>**Lakehouse RT (Beta)**: first the Databricks account team enables it for the account, then turn it on in the workspace Previews (see §2b) | 实验 09 的计算资源选择；没有时用 Serverless Starter<br>Lab 09's compute choice; without it, Serverless Starter |
+| Genie：学员有 Databricks SQL 权限；ap-southeast-1 可能需要跨区域处理<br>Genie: participants have the Databricks SQL entitlement; ap-southeast-1 may need cross-Geo processing | 实验 10（Genie Agent、Genie One）<br>Lab 10 (Genie Agent, Genie One) |
 | **账户级**组 `de_workshop_sz` 包含约 20 位学员（通过 IdP/SCIM）| Unity Catalog 授权只适用于账户级组。在工作区内创建的组**不**工作 |
 | 深圳办公室出站 IP 在工作区的 **IP 访问列表**中| 学员必须从会场网络访问工作区 |
 
@@ -63,6 +65,27 @@ CI/CD demo, see `docs/cicd_demo.md`; you don't need to deploy it.) This creates:
 | Job `hytech_ws_drip_producer` | 讲师专用：在实验期间持续生成新 CDC 文件 |
 | Pipeline `hytech_trade_lakehouse_solution` | 讲师参考答案（追进度、AI 实验数据）|
 | Job `hytech_daily_trading_reporting_solution` | 第 04 个实验的讲师参考答案 |
+
+## 2b · Lakehouse RT 与 Genie（实验 09 和 10）(Lakehouse RT and Genie, labs 09 and 10)
+
+1. 请 Databricks 客户团队为账户开启 **Lakehouse//RT Beta**（需要提前几天）。
+2. 工作区菜单 → **Previews** → 搜索 "Lakehouse RT" → 开启。
+3. 重新运行 `setup/00_master_setup`（可以重复运行）：设置作业的 `workshop_warehouses` 任务（`setup/08_workshop_warehouses`）会创建 `hytech_workshop_rt`（Real-Time，Small，空闲 10 分钟自动停止），并授予 `de_workshop_sz` *Can use*。也可以手动创建并授权。
+4. 检查 Lakehouse RT 的限制：没有 serverless egress control、出站 Private Link 或合规安全配置；workshop catalog 不在 Unity Catalog 默认存储中。
+5. Genie：学员需要 **Databricks SQL** 权限。在 ap-southeast-1，如果看不到 Agent 模式或 Genie One 对话，开启跨区域处理 (cross-Geo processing)。
+6. 用一个**非管理员**学员账号测试：创建管道和作业、实验 03c 的预发布通道、实验 09 的计算资源菜单中能看到 Real-Time 仓库、实验 10 能创建 Genie Agent。
+
+1. Ask the Databricks account team to enable the **Lakehouse//RT Beta** for the account (allow a few days).
+2. Workspace menu → **Previews** → search "Lakehouse RT" → turn it on.
+3. Re-run `setup/00_master_setup` (it is safe to re-run): the setup job's `workshop_warehouses` task
+   (`setup/08_workshop_warehouses`) creates `hytech_workshop_rt` (Real-Time, Small, stops after 10 idle minutes) and
+   grants `de_workshop_sz` *Can use*. You can also create it by hand and grant it.
+4. Check Lakehouse RT's limits: no serverless egress control, outbound Private Link or compliance security profile, and
+   the workshop catalog is not in Unity Catalog default storage.
+5. Genie: participants need the **Databricks SQL** entitlement. On ap-southeast-1, if Agent mode or Genie One chat is
+   missing, turn on cross-Geo processing.
+6. Test with one **non-admin** participant account: creating a pipeline and a job, lab 03c's staging lane, the
+   Real-Time warehouse in lab 09's compute menu, and creating a Genie Agent in lab 10.
 
 ## 3 · 运行环境搭建作业 (Run the setup job)
 
@@ -122,14 +145,16 @@ If any step fails, send Zhi Han and Germaine a screenshot (Lark/WeChat).
 
 - 作为工作坊管理员，需要处理权限和网络问题。
 - 学员只需要对 `raw` 的读权限，绝不需要直接访问系统表（他们使用 `ops.*` 视图）。
+- 实验 09 和 10 需要的 SQL 仓库权限由 `setup/08_workshop_warehouses` 授予；有学员看不到仓库时，检查 `de_workshop_sz` 是否有 *Can use*。
 
 - Be available as workshop admin for permissions and network issues.
 - Participants never need access to `raw` beyond read, and never to system tables directly (they use `ops.*` views).
+- Labs 09 and 10 get their SQL warehouse access from `setup/08_workshop_warehouses`; if a participant can't see a warehouse, check that `de_workshop_sz` has *Can use*.
 
 ## 7 · 培训之后 (After the workshop)
 
-将 catalog 保留约 2 周，以便学员继续练习。然后运行 `setup/99_teardown`（输入 catalog 名称确认），它也会删除一键安装创建的作业和管道。如果用的是方式 B（bundle），再运行 `databricks bundle destroy -t prod`。
+将 catalog 保留约 2 周，以便学员继续练习。然后运行 `setup/99_teardown`（输入 catalog 名称确认），它也会删除一键安装创建的作业和管道。如果用的是方式 B（bundle），再运行 `databricks bundle destroy -t prod`。`setup/99_teardown` 也会删除 `hytech_workshop_rt`。
 
 Keep the catalog for about 2 weeks so people can practise. Then run `setup/99_teardown` (type the catalog name
 to confirm); it also deletes the jobs and the pipeline the master setup created. If you used option B (the bundle),
-also run `databricks bundle destroy -t prod`.
+also run `databricks bundle destroy -t prod`. `setup/99_teardown` also deletes `hytech_workshop_rt`.

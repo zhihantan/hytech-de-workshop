@@ -35,3 +35,16 @@ def test_ai_functions_is_marked_optional_everywhere():
     for path in ENTRY_POINTS:
         row = next(line for line in read(path).splitlines() if "07_AI_Functions" in line)
         assert "可选" in row, (path, row)
+
+
+def test_the_setup_guide_has_the_lakehouse_rt_and_genie_pre_steps():
+    text = read("docs/setup_guide_triones.md")
+    for needle in ("Lakehouse RT", "Previews", "hytech_workshop_rt", "08_workshop_warehouses", "cross-Geo", "Databricks SQL"):
+        assert needle in text, needle
+    assert text.find("客户团队") < text.find("Previews")   # 先找客户团队，再开 Previews (account team first, then Previews)
+
+
+def test_troubleshooting_covers_the_new_labs():
+    text = read("docs/troubleshooting.md")
+    for needle in ("start_over", "03c", "04c", "Run backfill", "hytech_workshop_rt", "10b", "source_schema", "hytech_de_lab/jobs"):
+        assert needle in text, needle
