@@ -12,6 +12,7 @@ PAIRS = [
     ("labs/03c_Data_Quality_and_Monitoring.py", "solutions/03c_Data_Quality_and_Monitoring.py"),
     ("labs/03d_Run_If_Dependencies.py", "solutions/03d_Run_If_Dependencies.py"),
     ("labs/03_pipeline/staging/06_staging_mt5_hk01.sql", "solutions/pipeline/staging/06_staging_mt5_hk01.sql"),
+    ("labs/04c_Failure_Recovery_and_Backfill.py", "solutions/04c_Failure_Recovery_and_Backfill.py"),
 ]
 KEY_POINT = re.compile(r"^\s*(# MAGIC\s+)?(#|--)\s*(要点|Key point)")
 PREAMBLE = ("本实验包含完整代码", "This lab has the complete code")
