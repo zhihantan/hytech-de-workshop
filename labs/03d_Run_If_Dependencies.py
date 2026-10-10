@@ -50,8 +50,8 @@ for notebook in RUN_IF_JOB_NOTEBOOKS:
     except Exception:  # noqa: BLE001 - not copied yet
         missing.append(notebook)
 if missing:
-    raise FileNotFoundError(f"{jobs_dir} 中缺少 {missing}：重新运行 labs/00_Start_Here 的第 3 步，复制新的作业笔记本 "
-                            f"({missing} not in {jobs_dir}: re-run step 3 of labs/00_Start_Here to copy the new job notebooks)")
+    raise FileNotFoundError(f"{jobs_dir} 中缺少 {missing}：在共享文件夹中重新运行 /Workspace/Shared/hytech-de-workshop/labs/00_Start_Here 的第 3 步（在自己的副本中运行时不会复制）"
+                            f"({missing} not in {jobs_dir}: re-run step 3 of /Workspace/Shared/hytech-de-workshop/labs/00_Start_Here in the shared folder; run from your own copy, it copies nothing)")
 print("schema:", f"{catalog}.{schema}", "| job notebooks:", jobs_dir, "| job:", job_name)
 
 # COMMAND ----------

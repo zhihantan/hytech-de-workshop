@@ -38,7 +38,7 @@ Open `/Workspace/Shared/hytech-de-workshop/labs/00_Start_Here` → select **Serv
 | M5 | `04_Lakeflow_Jobs.md` | 作业：if/else、for-each、Run if、修复运行、触发器<br>Jobs: if/else, for-each, Run if, repair runs, triggers |
 | M5 | `04c_Failure_Recovery_and_Backfill` | 管道失败之后：重试、修复运行、按日期回填<br>After a pipeline failure: retries, a repair run, backfill by date |
 | M6 | `05_Genie_Code.md` · `06_System_Tables` | Genie Code 提示词阶梯；成本 / 运行 / 血缘<br>Genie Code prompt ladder; cost / runs / lineage |
-| M6c | `08_Knowledge_Check.md` | 知识测验：15 道单选题 + 加分题，对应认证考试大纲<br>Knowledge check: 15 multiple-choice questions + bonus, aligned to certification exam |
+| M6c（课后作业 / homework） | `08_Knowledge_Check.md` | 知识测验：15 道单选题 + 加分题，对应认证考试大纲<br>Knowledge check: 15 multiple-choice questions + bonus, aligned to certification exam |
 | M7 | `09_AIBI_Dashboard_Lakehouse_RT.md` · `10_Genie_Agent.md` | AI/BI 仪表盘 + Lakehouse RT；Genie Agent + Genie One（补课：`09b`、`10b` 会创建单独的参考副本）<br>AI/BI dashboard + Lakehouse RT; Genie Agent + Genie One (catch-up: `09b` and `10b` create separate reference copies) |
 | AI（可选 / optional） | `07_AI_Functions` | `ai_query`（中文简报）、`ai_classify`、`ai_mask`<br>`ai_query` (Mandarin summary), `ai_classify`, `ai_mask` |
 

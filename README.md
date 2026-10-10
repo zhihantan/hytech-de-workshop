@@ -92,14 +92,14 @@ Full checklist for Hytech's admin: [`docs/setup_guide_triones.md`](docs/setup_gu
 | M7 仪表盘 (Dashboards) | `09_AIBI_Dashboard_Lakehouse_RT.md`（UI）— 在自己的 gold 表上搭建仪表盘，把计算资源切换到 Lakehouse RT<br>`09_AIBI_Dashboard_Lakehouse_RT.md` (UI) — a dashboard on your own gold tables, compute switched to Lakehouse RT | `09b_Dashboard_Catch_Up`（参考仪表盘 / reference dashboard） |
 | M7 Genie | `10_Genie_Agent.md`（UI）— 创建并配置 Genie Agent，再通过 Genie One 提问<br>`10_Genie_Agent.md` (UI) — create and configure a Genie Agent, then ask through Genie One | `10b_Genie_Catch_Up`（参考 Agent / reference agent） |
 | AI 函数（可选，本次议程不包括）(AI Functions — optional, not on this agenda) | `07_AI_Functions` — `ai_query` (中文), `ai_classify`, `ai_mask`, 情感分析<br>`07_AI_Functions` — `ai_query` (中文), `ai_classify`, `ai_mask`, sentiment | `solutions/07_AI_Functions` |
-| M6c 总结 (Recap) | `08_Knowledge_Check` — 15 道题 + 加分题，映射到考试指南<br>`08_Knowledge_Check` — 15 questions + bonus, mapped to the exam guide | `docs/knowledge_check_answers.md` |
+| M6c 总结 (Recap)（测验作为课后作业 / quiz as homework）| `08_Knowledge_Check` — 15 道题 + 加分题，映射到考试指南<br>`08_Knowledge_Check` — 15 questions + bonus, mapped to the exam guide | `docs/knowledge_check_answers.md` |
 
 ## 代码库布局 (Repository layout)
 
 | 路径 (Path) | 说明 (What) |
 |---|---|
 | `databricks.yml`, `resources/` | 声明式自动化包：设置作业、滴灌程序、参考答案管道和作业（`dev`、`prod` 和 `cicd` 目标）<br>Declarative Automation Bundle: setup job, drip producer, solution pipeline and job (`dev`, `prod` and `cicd` targets) |
-| `setup/` | `00_master_setup`（一键创建并运行全部作业）、`01`–`08` 设置笔记本（`07` 发布成本仪表盘，`08` 授予 SQL 仓库权限，并在开启 Lakehouse RT 时创建 `hytech_workshop_rt`）、`03_drip_producer`、`99_teardown`<br>`00_master_setup` (creates and runs every job in one go), `01`–`08` setup notebooks (`07` publishes the cost dashboard; `08` grants SQL warehouse access and, when Lakehouse RT is on, creates `hytech_workshop_rt`), `03_drip_producer`, `99_teardown` |
+| `setup/` | `00_master_setup`（一键创建并运行全部作业）、`01`–`08` 设置笔记本（`07` 发布成本仪表盘，`08` 找到或创建工作坊 SQL 仓库 `hytech_workshop_sql` 并授权，开启 Lakehouse RT 时再创建 `hytech_workshop_rt`）、`03_drip_producer`、`99_teardown`<br>`00_master_setup` (creates and runs every job in one go), `01`–`08` setup notebooks (`07` publishes the cost dashboard; `08` finds or creates the workshop SQL warehouse `hytech_workshop_sql` and grants it, and creates `hytech_workshop_rt` when Lakehouse RT is on), `03_drip_producer`, `99_teardown` |
 | `dashboards/` | AI/BI 成本和健康仪表盘（JSON 格式），基于 `ops` 视图<br>AI/BI cost & health dashboard (JSON) over the `ops` views |
 | `cicd/` | GitLab CI 模板（在合并请求时验证、作为服务主体部署）和 `deploy_as_service_principal.sh` 实时演示脚本<br>GitLab CI template (validate on merge requests, deploy as a service principal) and `deploy_as_service_principal.sh` for the live demo |
 | `src/hytech_workshop/` | 合成数据生成器：MT5 用户/成交/持仓（作为 DMS CDC）、应用事件、参考数据、滴灌程序<br>Synthetic data generator: MT5 users/deals/positions as DMS CDC, app events, reference data, drip producer |
@@ -194,6 +194,6 @@ On a test workspace (AWS us-east-1), run as a participant (`auto = true`, each a
 | `03c_Data_Quality_and_Monitoring` | 22/22 项检查通过：WARN 保留、DROP 进入隔离表、FAIL 只让预发布 silver 失败而下游跳过；策略修复和源头修复<br>22/22 checks: WARN keeps, DROP quarantines, FAIL fails only the staging silver and skips downstream; policy and source fixes |
 | `03d_Run_If_Dependencies` | 11/11 个任务符合预期，运行状态 Succeeded with failures<br>11/11 tasks as expected, run status Succeeded with failures |
 | `04c_Failure_Recovery_and_Backfill` | 23/23 项检查通过：重试、修复运行后同一次运行变绿、没有丢失批次、回填两天且每天正好一份日报；没有成交的日期也能正常回填<br>23/23 checks: retries, the same run green after the repair, no lost batch, two backfilled days with exactly one summary each; a day with no trades backfills cleanly |
-| `setup/08_workshop_warehouses` | 创建 `hytech_workshop_rt`（Real-Time，Small），重新运行不会重复<br>Created `hytech_workshop_rt` (Real-Time, Small); a re-run makes no duplicate |
+| `setup/08_workshop_warehouses` | 创建 `hytech_workshop_sql`（serverless，Small）和 `hytech_workshop_rt`（Real-Time，Small），重新运行不会重复<br>Created `hytech_workshop_sql` (serverless, Small) and `hytech_workshop_rt` (Real-Time, Small); a re-run makes no duplicate |
 | `09b_Dashboard_Catch_Up` | 参考仪表盘在 Real-Time 仓库上发布；三个数据集的查询都成功<br>Reference dashboard published on the Real-Time warehouse; all three dataset queries succeed |
 | `10b_Genie_Catch_Up` | 参考 Genie Agent 用简体中文回答，遵守说明（"昨天" = 数据中最近的一天，完整数字，黄金 = XAUUSD）<br>Reference Genie Agent answers in Simplified Chinese and follows the instructions ("yesterday" = the latest day in the data, full numbers, 黄金 = XAUUSD) |

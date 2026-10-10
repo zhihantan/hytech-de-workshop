@@ -4,7 +4,7 @@
 
 Create and configure a **Genie Agent** on your own gold tables and ask it questions in Chinese; then ask the same question through **Genie One** and see how it finds your agent.
 
-> 你需要 (You need)：Databricks SQL 权限，以及对工作坊 SQL 仓库 `hytech_workshop_sql` 的 *Can use*（工作坊设置已授予）。Genie 不能在 Lakehouse RT 仓库上运行，所以这里用 serverless 仓库。如果工作区在新加坡区域而看不到 Agent 模式或 Genie One 对话，请管理员开启跨区域处理 (cross-Geo processing)。<br>
+> 你需要 (You need)：Databricks SQL 权限，以及对工作坊 SQL 仓库 `hytech_workshop_sql` 的 *Can use*（工作坊设置已授予）。Genie 不能在 Lakehouse RT 仓库上运行，所以这里用 serverless 仓库。如果工作区在新加坡区域而看不到 Agent 模式或 Genie One 对话，请管理员开启跨地域处理 (cross-Geo processing)。<br>
 > The Databricks SQL entitlement and *Can use* on the workshop SQL warehouse `hytech_workshop_sql` (the workshop setup grants it). Genie can't run on a Lakehouse RT warehouse, so use a serverless one. If the workspace is in Singapore and you don't see Agent mode or Genie One chat, ask the admin to enable cross-Geo processing.
 >
 > 落后了，或管道坏了？运行 `10b_Genie_Catch_Up`（管道坏了就把 `source_schema` 设为 `solutions`）：它会创建一个单独的参考 Agent `MT5 交易分析助手 · <你的名字> · 参考 (reference)`，不会改动你自己配置的 Agent。<br>
