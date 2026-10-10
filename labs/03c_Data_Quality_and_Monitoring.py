@@ -34,6 +34,7 @@
 
 dbutils.widgets.text("catalog", "hytech_de_workshop")
 dbutils.widgets.dropdown("auto", "false", ["false", "true"], "自动完成手动步骤 (auto: do the hand steps for me)")
+dbutils.widgets.dropdown("start_over", "false", ["false", "true"], "从头再来：清空预发布通道 (start over: empty the staging lane)")
 
 # COMMAND ----------
 
@@ -46,6 +47,7 @@ from databricks.sdk import WorkspaceClient
 w = WorkspaceClient()
 catalog = dbutils.widgets.get("catalog")
 AUTO = dbutils.widgets.get("auto") == "true"
+START_OVER = dbutils.widgets.get("start_over") == "true"
 me = spark.sql("SELECT current_user()").first()[0]
 names = my_names(me)
 my_schema = names["schema"]
@@ -84,10 +86,21 @@ print("schema:", cs, "| pipeline:", names["pipeline"], "| staging_root:", stagin
 # MAGIC 创建 volume `staging`，然后写入新服务器的第一个 DMS 文件。和真实的第一批数据一样，它夹着几行问题数据：3 笔 Volume = 0、2 笔缺少品种、1 笔未来日期。
 # MAGIC
 # MAGIC Create the volume `staging`, then write the new server's first DMS file. Like a real first batch, it carries a few problem rows: 3 zero-volume trades, 2 trades without a symbol and 1 future-dated trade.
+# MAGIC
+# MAGIC 做到一半想从头再来？把顶部的 `start_over` 设为 `true`：这个单元格会清空预发布通道，第 3 步会对预发布的四张表做完全刷新。<br>
+# MAGIC Stopped halfway and want to start again? Set `start_over` at the top to `true`: this cell empties the staging lane, and step 3 fully refreshes the four staging tables.
 
 # COMMAND ----------
 
 spark.sql(f"CREATE VOLUME IF NOT EXISTS {cs}.staging COMMENT 'Labs 03c/04c staging lane: DMS files of the new server mt5-hk-01'")
+if START_OVER:
+    try:
+        old_files = dbutils.fs.ls(staging_dir(catalog, my_schema))
+    except Exception:  # noqa: BLE001 - the folder does not exist yet
+        old_files = []
+    for f in old_files:
+        dbutils.fs.rm(f.path)
+    print("start over: removed", len(old_files), "staging file(s)")
 # 要点 1 (Key point 1) · 文件写进你自己的 volume，而不是共享的落地区 (the file goes into your own volume, not the shared landing zone)
 first_batch = write_batch(spark, catalog, my_schema, "junk")
 display(dbutils.fs.ls(staging_dir(catalog, my_schema)))
@@ -128,7 +141,8 @@ else:
 
 # COMMAND ----------
 
-pipeline_run()
+# start_over 且预发布表已存在时，先完全刷新它们 (with start_over and existing staging tables, fully refresh them first)
+pipeline_run(full_refresh_selection=list(STAGING_TABLES) if START_OVER and set(STAGING_TABLES) <= tables else None)
 
 # COMMAND ----------
 
@@ -182,7 +196,7 @@ check("隔离表里能看到这 5 笔负价格 (the quarantine shows the 5 negat
 
 # MAGIC %sql
 # MAGIC -- 要点 3 (Key point 3) · 错误信息写明了是哪条规则、哪一行 (the error names the rule and the record)
-# MAGIC SELECT timestamp, origin.flow_name AS flow, error.exceptions[0].error_class AS error_class,
+# MAGIC SELECT timestamp, origin.flow_name AS flow, error.exceptions[0].class_name AS error_class,
 # MAGIC        left(error.exceptions[0].message, 500) AS message
 # MAGIC FROM pipeline_event_log
 # MAGIC WHERE level = 'ERROR' AND error IS NOT NULL
@@ -343,7 +357,7 @@ check("更新完成 (the update completed)", flows.get("silver_staging_mt5_deals
 # MAGIC   SELECT origin.update_id AS update_id FROM pipeline_event_log
 # MAGIC   WHERE event_type = 'create_update' ORDER BY timestamp DESC LIMIT 1)
 # MAGIC SELECT origin.flow_name AS flow,
-# MAGIC        max_by(details:flow_progress.status, timestamp) AS status,
+# MAGIC        max_by(details:flow_progress.status, timestamp) FILTER (WHERE details:flow_progress.status IS NOT NULL) AS status,
 # MAGIC        sum(CAST(details:flow_progress.metrics.num_output_rows AS BIGINT)) AS rows_written
 # MAGIC FROM pipeline_event_log JOIN latest ON origin.update_id = latest.update_id
 # MAGIC WHERE event_type = 'flow_progress'

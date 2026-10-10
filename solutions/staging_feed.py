@@ -253,7 +253,10 @@ def latest_update_flows(spark, cs: str) -> dict:
       WITH latest AS (
         SELECT origin.update_id AS update_id FROM {cs}.pipeline_event_log
         WHERE event_type = 'create_update' ORDER BY timestamp DESC LIMIT 1)
-      SELECT origin.flow_name AS flow, max_by(details:flow_progress.status, timestamp) AS status
+      SELECT origin.flow_name AS flow,
+             -- 最后还有一条只含执行指标、没有状态的事件，所以只看有状态的事件
+             -- (each flow ends with a metrics-only event that has no status, so only read events that have one)
+             max_by(details:flow_progress.status, timestamp) FILTER (WHERE details:flow_progress.status IS NOT NULL) AS status
       FROM {cs}.pipeline_event_log JOIN latest ON origin.update_id = latest.update_id
       WHERE event_type = 'flow_progress'
       GROUP BY ALL""").collect()
