@@ -76,3 +76,13 @@ def test_the_catch_up_never_overwrites_the_dashboard_built_by_hand():
     # Lab 09 has participants title their own dashboard "MT5 交易概览 · <your_name>"; 09b updates by title, so it needs another title
     assert ds.DASHBOARD_TITLE.format(name="zhang_wei") != "MT5 交易概览 · zhang_wei"
     assert "参考" in ds.DASHBOARD_TITLE and "reference" in ds.DASHBOARD_TITLE
+
+
+def test_lab_09_builds_the_same_datasets_as_the_catch_up():
+    # 手动搭建（实验 09）和补课（09b）必须一致 (the hand-built dashboard, lab 09, and the catch-up, 09b, must match)
+    with open(os.path.join(HERE, "..", "labs", "09_AIBI_Dashboard_Lakehouse_RT.md"), encoding="utf-8") as fh:
+        lab = fh.read()
+    for d in D["datasets"]:
+        assert d["queryLines"][0].strip() in lab, d["name"]
+        assert f"`{d['name']}`" in lab
+    assert "LIMIT 10" in lab and "参考 (reference)" in lab
