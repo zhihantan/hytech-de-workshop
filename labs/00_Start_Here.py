@@ -7,7 +7,8 @@
 # MAGIC
 # MAGIC | 模块 Module | Notebook / 文件 | 你会做什么 |
 # MAGIC |---|---|---|
-# MAGIC | M1 | `00_Start_Here` (本页) | 创建自己的 schema，浏览数据 |
+# MAGIC | M1 | `00_Start_Here` (本页) | 创建自己的 schema 和落地区，浏览数据 |
+# MAGIC | M3–M5 | `00b_Live_Data` | 需要新数据时运行：向你自己的落地区写入新的 DMS 文件 |
 # MAGIC | M2 | `01_Unity_Catalog` | 授权、标签、列掩码、行过滤 |
 # MAGIC | M3 | `02_Ingestion` | CTAS · COPY INTO · Auto Loader · JSON 与 rescued data |
 # MAGIC | M4 | `03_pipeline/` + `03b_Explore_Pipeline` | Spark 声明式管道：bronze → silver → gold |
@@ -28,11 +29,11 @@ catalog = dbutils.widgets.get("catalog")
 me = spark.sql("SELECT current_user()").first()[0]
 local = me.split("@")[0].lower()
 my_schema = "u_" + "".join(ch if ch.isalnum() else "_" for ch in local).strip("_")
-landing = f"/Volumes/{catalog}/raw/landing"
+landing = f"/Volumes/{catalog}/{my_schema}/landing"   # 你自己的落地区，第 1b 步创建 (your own landing zone, created in step 1b)
 
 print(f"你好 {me}")
 print(f"你的 schema (your schema): {catalog}.{my_schema}")
-print(f"数据落地区 (landing zone):  {landing}")
+print(f"你的落地区 (your landing zone):  {landing}")
 
 # COMMAND ----------
 
@@ -52,7 +53,46 @@ display(spark.sql(f"DESCRIBE SCHEMA EXTENDED {catalog}.{my_schema}"))
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 2 · 浏览落地区 — Explore the landing zone
+# MAGIC ## 1b · 你自己的落地区 — Your own landing zone
+# MAGIC
+# MAGIC 每位学员都有自己的落地区。下面的单元格把共享的历史数据（约 760 个文件、约 90 MB，通常 1–2 分钟）复制到你的 schema 里的 volume `landing`，并把数据生成器的状态复制到 volume `producer`。之后需要新数据时，运行 `00b_Live_Data`：它只写入你的落地区，只有你的管道会读到。可以放心重新运行：已复制的文件会被跳过，你的生成器状态不会被覆盖。
+# MAGIC
+# MAGIC Every participant has their own landing zone. The cell below copies the shared history (about 760 files, about 90 MB, usually 1–2 minutes) into the volume `landing` in your schema, and the data generator's state into the volume `producer`. Afterwards, whenever you need new data, run `00b_Live_Data`: it writes only into your landing zone, and only your pipeline reads it. Re-running is safe: files already copied are skipped, and your generator state is never overwritten.
+
+# COMMAND ----------
+
+# MAGIC %run ./live_feed
+
+# COMMAND ----------
+
+import time
+
+roots = personal_roots(catalog, me)
+try:
+    for vol in PERSONAL_VOLUMES:
+        spark.sql(f"CREATE VOLUME IF NOT EXISTS {catalog}.{my_schema}.{vol} COMMENT 'Your own copy of raw.{vol} (labs 00 and 00b)'")
+    started = time.time()
+    copied, skipped = copy_missing(f"/Volumes/{catalog}/raw/landing", roots["landing"])
+    print(f"✅ landing：复制了 {copied} 个文件，跳过 {skipped} 个已有的，用时 {time.time() - started:.0f} 秒"
+          f" (copied {copied} files, skipped {skipped} already there, {time.time() - started:.0f} s)")
+except Exception as e:  # noqa: BLE001
+    print("⚠️ 无法创建或复制你的落地区，请联系讲师 / Triones (could not create or copy your landing zone; ask the instructor):",
+          (str(e).splitlines() or [repr(e)])[0][:200])
+try:
+    if seed_producer(f"/Volumes/{catalog}/raw/producer", roots["producer"]):
+        print("✅ producer：已复制数据生成器的状态 (copied the data generator's state)")
+    else:
+        print("✅ producer：保留你已有的状态，00b 从上次停下的地方继续 (kept your existing state: 00b continues where it stopped)")
+except OSError as e:
+    print("⚠️ 无法读取 raw.producer：请管理员重新运行 setup（它会授予 raw.producer 的读取权限）。在此之前无法运行 00b_Live_Data。")
+    print("   Cannot read raw.producer: ask the admin to re-run setup (it grants READ VOLUME on raw.producer). Until then 00b_Live_Data can't run.")
+    print("  ", (str(e).splitlines() or [repr(e)])[0][:200])
+print(f"\n实验 03 的 landing_root (Lab 03's landing_root): {roots['landing']}")
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## 2 · 浏览你的落地区 — Explore your landing zone
 # MAGIC
 # MAGIC DMS 的目录结构：`mt5/<server>/<table>/`，里面有一个全量文件 `LOAD00000001.parquet`，以及按时间命名的增量 CDC 文件 `yyyymmdd-hhmmssfff.parquet`。每一行都有 `Op`（I 插入 / U 更新 / D 删除）和 `cdc_ts`（提交时间）。
 # MAGIC
@@ -99,9 +139,9 @@ display(spark.read.parquet(cdc_file).groupBy("Op").count())
 # MAGIC %md
 # MAGIC ## 3 · 复制实验文件到你的目录 — Copy the lab files to your home folder
 # MAGIC
-# MAGIC 你需要一份**可编辑**的副本（尤其是 `03_pipeline/`）。下面的单元格会把 `labs/` 和作业用的 `jobs/` 复制到 `/Users/<you>/hytech_de_lab/`（已存在的文件不会被覆盖）。也可以在左侧工作区右键 **Clone**。
+# MAGIC 你需要一份**可编辑**的副本（尤其是 `03_pipeline/`）。下面的单元格会把 `labs/`、作业用的 `jobs/` 和 `00b_Live_Data` 用的数据生成器 `src/` 复制到 `/Users/<you>/hytech_de_lab/`（已存在的文件不会被覆盖）。也可以在左侧工作区右键 **Clone**。
 # MAGIC
-# MAGIC You need an **editable** copy (especially `03_pipeline/`). The cell below copies `labs/` and job task notebooks `jobs/` to `/Users/<you>/hytech_de_lab/` (existing files are not overwritten). Alternatively, right-click **Clone** in the left sidebar.
+# MAGIC You need an **editable** copy (especially `03_pipeline/`). The cell below copies `labs/`, the job task notebooks `jobs/` and the data generator `src/` that `00b_Live_Data` uses to `/Users/<you>/hytech_de_lab/` (existing files are not overwritten). Alternatively, right-click **Clone** in the left sidebar.
 
 # COMMAND ----------
 
@@ -139,11 +179,12 @@ def copy_tree(src: str, dst: str) -> None:
 
 
 src_labs = ws_path(os.getcwd())                      # <repo>/labs (<repo>/labs)
-src_jobs = src_labs.rsplit("/", 1)[0] + "/jobs"       # <repo>/jobs 包含 lab 04 的任务 notebook (task notebooks for lab 04)
+src_repo = src_labs.rsplit("/", 1)[0]                 # <repo>
 dst_labs = f"/Users/{me}/hytech_de_lab"
 if src_labs.rstrip("/") == dst_labs:
     print("You are already running from your own copy.")
 else:
     copy_tree(src_labs, dst_labs)
-    copy_tree(src_jobs, f"{dst_labs}/jobs")
+    copy_tree(f"{src_repo}/jobs", f"{dst_labs}/jobs")   # lab 04 的任务 notebook (task notebooks for lab 04)
+    copy_tree(f"{src_repo}/src", f"{dst_labs}/src")     # 00b_Live_Data 用的数据生成器 (the data generator 00b_Live_Data uses)
     print(f"\n✅ 完成。请打开 {dst_labs}/01_Unity_Catalog 继续 (continue from your copy).")

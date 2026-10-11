@@ -80,7 +80,8 @@ Full checklist for Hytech's admin: [`docs/setup_guide_triones.md`](docs/setup_gu
 
 | 模块 (Module) | 实验 (`labs/`) | 参考答案 (Solution) |
 |---|---|---|
-| M1 | `00_Start_Here` — 自己的 schema、浏览 DMS 文件、复制实验<br>`00_Start_Here` — own schema, explore DMS files, copy labs | — |
+| M1 | `00_Start_Here` — 自己的 schema 和落地区、浏览 DMS 文件、复制实验<br>`00_Start_Here` — own schema and landing zone, explore DMS files, copy labs | — |
+| M3–M5 实时数据 (Live data) | `00b_Live_Data` — 需要新数据时运行：向自己的落地区写入新的 DMS 文件（可上线 `mt5-hk-01`、写入坏批次）<br>`00b_Live_Data` — run it whenever a lab needs new data: writes new DMS files into your own landing zone (can onboard `mt5-hk-01` or write a bad batch) | — |
 | M2 Unity Catalog | `01_Unity_Catalog` — 授权、视图、标签、列掩码、行过滤器<br>`01_Unity_Catalog` — grants, views, tags, column mask, row filter | `solutions/01_Unity_Catalog` |
 | M3 数据接入 (Ingestion) | `02_Ingestion` — CTAS、COPY INTO、Auto Loader、JSON + 救援数据<br>`02_Ingestion` — CTAS, COPY INTO, Auto Loader, JSON + rescued data | `solutions/02_Ingestion` |
 | M4 管道 (Pipelines) | `03_pipeline/` + `03b_Explore_Pipeline` | `solutions/pipeline/` |
@@ -105,7 +106,7 @@ Full checklist for Hytech's admin: [`docs/setup_guide_triones.md`](docs/setup_gu
 | `src/hytech_workshop/` | 合成数据生成器：MT5 用户/成交/持仓（作为 DMS CDC）、应用事件、参考数据、滴灌程序<br>Synthetic data generator: MT5 users/deals/positions as DMS CDC, app events, reference data, drip producer |
 | `solutions/pipeline/transformations/` | 参考管道（Python Auto Loader bronze + SQL silver/gold）<br>Reference pipeline (Python Auto Loader bronze + SQL silver/gold) |
 | `jobs/` | 作业任务笔记本：`dq_gate`、`reconcile_server`、`publish_daily_summary`、`notify`、`audit`、`task_logger`（实验 03d）<br>Job task notebooks: `dq_gate`, `reconcile_server`, `publish_daily_summary`, `notify`, `audit`, `task_logger` (lab 03d) |
-| `labs/` | 学员笔记本：完整代码，关键步骤有「要点」注释；辅助笔记本 `staging_feed`（03c、04c）、`run_if_spec`（03d）、`dashboard_spec`（09b）、`genie_spec`（10b）由实验用 `%run` 加载；`03_pipeline/staging/` 是 03c 的预发布通道文件<br>Participant notebooks: complete code, with "Key point" comments on the key steps; helper notebooks `staging_feed` (03c, 04c), `run_if_spec` (03d), `dashboard_spec` (09b) and `genie_spec` (10b) are loaded by the labs with `%run`; `03_pipeline/staging/` holds 03c's staging-lane file |
+| `labs/` | 学员笔记本：完整代码，关键步骤有「要点」注释；辅助笔记本 `live_feed`（00、00b）、`staging_feed`（03c、04c）、`run_if_spec`（03d）、`dashboard_spec`（09b）、`genie_spec`（10b）由实验用 `%run` 加载；`03_pipeline/staging/` 是 03c 的预发布通道文件<br>Participant notebooks: complete code, with "Key point" comments on the key steps; helper notebooks `live_feed` (00, 00b), `staging_feed` (03c, 04c), `run_if_spec` (03d), `dashboard_spec` (09b) and `genie_spec` (10b) are loaded by the labs with `%run`; `03_pipeline/staging/` holds 03c's staging-lane file |
 | `genie_code/` | Genie Code 技能 + 提示词梯度<br>Genie Code skill + prompt ladder |
 | `tests/` | 本地测试：生成器、实验辅助函数、作业和设置定义、仪表盘和 Genie 定义、文档一致性（`pytest tests/`）<br>Local tests: generator, lab helpers, job and setup definitions, dashboard and Genie definitions, docs consistency (`pytest tests/`) |
 
