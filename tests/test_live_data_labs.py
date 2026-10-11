@@ -78,3 +78,14 @@ def test_reconcile_checks_the_participants_own_landing_before_the_shared_one():
 
 def test_setup_grants_read_on_the_generator_state():
     assert "GRANT READ VOLUME ON VOLUME {catalog}.raw.producer TO `{group}`" in read("setup/01_create_catalog_schemas.py")
+
+
+def test_lab_04_trigger_step_says_what_to_do_when_the_job_does_not_start():
+    text = read("labs/04_Lakeflow_Jobs.md")
+    section = text[text.index("## 4 ·"):text.index("## 5 ·")]
+    assert section.count("Schedules & Triggers") == 2 and section.count("Run now") == 2   # 中文和英文各一次 (once in each language)
+
+
+def test_the_dry_run_tries_the_file_arrival_trigger():
+    line = next(l for l in read("docs/facilitator_guide.md").splitlines() if l.startswith("- [ ] At the dry run"))
+    assert "file-arrival trigger" in line and "00b" in line
