@@ -62,7 +62,7 @@ CI/CD demo, see `docs/cicd_demo.md`; you don't need to deploy it.) This creates:
 | 资源 (Resource) | 用途 (Purpose) |
 |---|---|
 | Job `hytech_ws_setup` | Catalog、schema、volume、授权、综合数据、学员 schema、ops 视图、成本仪表盘、Genie Code skill |
-| Job `hytech_ws_drip_producer` | 讲师专用：在实验期间持续生成新 CDC 文件 |
+| Job `hytech_ws_drip_producer` | 可选：向共享落地区写入新 CDC 文件，供讲师在自己的测试工作区演示。课堂上不要运行：学员用 `labs/00b_Live_Data` 生成自己的数据 |
 | Pipeline `hytech_trade_lakehouse_solution` | 讲师参考答案（追进度、AI 实验数据）|
 | Job `hytech_daily_trading_reporting_solution` | 第 04 个实验的讲师参考答案 |
 
@@ -133,7 +133,7 @@ Run job **`hytech_daily_trading_reporting_solution`** (about 4 minutes). It runs
 从**会场网络**中的笔记本电脑进行测试：
 
 1. 打开工作区 URL → 登录。
-2. 打开 `/Workspace/Shared/hytech-de-workshop/labs/00_Start_Here` → 选择 **Serverless** → 运行全部单元格。所有单元格应该都成功。
+2. 打开 `/Workspace/Shared/hytech-de-workshop/labs/00_Start_Here` → 选择 **Serverless** → 运行全部单元格。所有单元格应该都成功。第 1b 步把共享历史复制到这个账户自己的 volume（约 760 个文件、约 90 MB），记下用时；用非管理员的学员账户运行时，landing 和 producer 两行都应该是 ✅（如果出现 ⚠️ raw.producer，说明更新代码后还没有重新运行 setup）。
 3. 打开 SQL 编辑器 → `SELECT ai_query('<endpoint>', '用一句话介绍 Databricks')` → 你应该会得到一个答案。
 
 如果任何步骤失败，请向 Zhi Han 和 Germaine 发送截图（Lark/微信）。
@@ -142,7 +142,9 @@ From a laptop **on the venue network**:
 
 1. Open the workspace URL → log in.
 2. Open `/Workspace/Shared/hytech-de-workshop/labs/00_Start_Here` → attach **Serverless** → run all.
-   All cells should succeed.
+   All cells should succeed. Step 1b copies the shared history into the account's own volumes (about 760
+   files, about 90 MB): note the time. With a non-admin participant account, both the landing and the
+   producer lines must show ✅ (a ⚠️ raw.producer line means setup hasn't been re-run since the code refresh).
 3. Open the SQL editor → `SELECT ai_query('<endpoint>', '用一句话介绍 Databricks')` → you should get an answer.
 
 If any step fails, send Zhi Han and Germaine a screenshot (Lark/WeChat).
@@ -150,10 +152,12 @@ If any step fails, send Zhi Han and Germaine a screenshot (Lark/WeChat).
 ## 6 · 培训期间 (During the workshop)
 
 - 作为工作坊管理员，需要处理权限和网络问题。
+- 课堂上不需要运行任何作业：学员用 `labs/00b_Live_Data` 生成自己的实时数据。
 - 学员只需要对 `raw` 的读权限，绝不需要直接访问系统表（他们使用 `ops.*` 视图）。
 - 实验 09 和 10 用的 `hytech_workshop_sql` 和 `hytech_workshop_rt` 的权限由 `setup/08_workshop_warehouses` 授予；有学员看不到仓库时，检查 `de_workshop_sz` 是否有 *Can use*。
 
 - Be available as workshop admin for permissions and network issues.
+- Nothing needs to run during class: participants generate their own live data with `labs/00b_Live_Data`.
 - Participants never need access to `raw` beyond read, and never to system tables directly (they use `ops.*` views).
 - Labs 09 and 10 get access to `hytech_workshop_sql` and `hytech_workshop_rt` from `setup/08_workshop_warehouses`; if a participant can't see a warehouse, check that `de_workshop_sz` has *Can use*.
 

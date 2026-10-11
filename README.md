@@ -19,7 +19,9 @@ end (see *Verified* below).
  mt5-sg-01 · mt5-sg-02 · mt5-uk-01 · mt5-cy-01 (+ mt5-hk-01 onboarded live)      app events (JSON)
         │  DMS-style CDC Parquet  (LOAD00000001.parquet + yyyymmdd-hhmmssfff.parquet, Op = I/U/D)
         ▼
- /Volumes/hytech_de_workshop/raw/landing/mt5/<server>/<table>/
+ /Volumes/hytech_de_workshop/raw/landing/mt5/<server>/<table>/            shared history, written by setup
+        ▼  lab 00 copies it per participant · 00b_Live_Data adds new DMS files on demand
+ /Volumes/hytech_de_workshop/u_<name>/landing/mt5/<server>/<table>/
         ▼  Spark Declarative Pipeline (per participant schema u_<name>)
  bronze_mt5_{users,deals,positions} · bronze_app_events
  silver_mt5_users (SCD2) · silver_mt5_positions (SCD1) · silver_mt5_deals (append + expectations)
@@ -52,9 +54,9 @@ end (see *Verified* below).
 
    Set `workspace.host` in `databricks.yml` and the variables `catalog`, `llm_endpoint`, `participant_group`.
 
-2. 在课堂期间，用作业 **`hytech_ws_drip_producer`** 驱动实时数据（见讲师指南）。
+2. 课堂上不需要运行任何作业：每位学员在实验 00 中复制自己的落地区，需要新数据时自己运行 `labs/00b_Live_Data`（见讲师指南）。作业 `hytech_ws_drip_producer` 是可选的：它只写共享落地区，供讲师在自己的测试工作区里使用。
 
-   During class, drive the live data with job **`hytech_ws_drip_producer`** (see the facilitator guide).
+   Nothing needs to run during class: in lab 00 each participant copies their own landing zone, and runs `labs/00b_Live_Data` whenever a lab needs new data (see the facilitator guide). The job `hytech_ws_drip_producer` is optional: it writes only to the shared landing zone, for an instructor's own test workspace.
 
 3. 学员从 **`labs/00_Start_Here`** 开始。
 
@@ -136,6 +138,13 @@ Full checklist for Hytech's admin: [`docs/setup_guide_triones.md`](docs/setup_gu
   **Every participant breaks their own lane.** Labs 03c and 04c write bad batches into the participant's own schema
   and volume, and fail and recover in their own pipeline and job. No instructor needs access to the participant's
   environment, and these labs don't depend on the drip producer.
+
+- **每位学员自己的实时数据。** 实验 00 把共享历史复制到学员自己的 volume；`00b_Live_Data` 用同一个生成器按需向其中写入新的 DMS 文件。所以 Auto Loader 增量、SCD2、文件到达触发器、新服务器上线和坏批次都由学员自己完成，课堂上不需要集中运行任何作业。
+
+  **Every participant has their own live data.** Lab 00 copies the shared history into the participant's own volumes,
+  and `00b_Live_Data` writes new DMS files into them on demand with the same generator. Auto Loader increments, SCD2,
+  the file-arrival trigger, onboarding a new server and the bad batch are all done by each participant, and nothing
+  runs centrally during class.
 
 - **自检的实验和参考副本。** 代码实验的每一步以 ✅ / ❌ 检查结束；`auto = true` 代你完成手动步骤（也是我们的验证方式）。补课笔记本 09b 和 10b 创建标题带「· 参考 (reference)」的副本，不会覆盖你自己搭建的仪表盘或 Genie Agent。
 

@@ -30,34 +30,37 @@ One instructor presents while the other floats; swap per module. With 20 newcome
 - [ ] Lakehouse RT: the account team enabled the Beta, Triones turned it on in Previews, and `setup/08` created `hytech_workshop_rt` (otherwise lab 09 uses `hytech_workshop_sql`)
 - [ ] Genie: participants have the Databricks SQL entitlement; on ap-southeast-1, confirm Agent mode and Genie One chat with a participant account (Triones or a participant drives, the instructors guide; an account admin may need to turn on cross-Geo processing)
 - [ ] At the dry run, walk one fresh participant account through 00 → 03 → 03c (mistype `staging_root` once) → 03d step 3 (edit a Run if → Repair run) → 04 → 04c (including the Run backfill dialog) → 09 (compute menu) → 10 + Genie One (Triones or a participant drives; the instructors guide)
-- [ ] Accounts that ran lab 00 before the code refresh: delete `hytech_de_lab/jobs/`, then open `/Workspace/Shared/hytech-de-workshop/labs/00_Start_Here` in the shared folder and re-run its copy cell (run from your own copy, it copies nothing; the copy never overwrites existing files, and the old job notebooks don't know `report_date`)
+- [ ] Accounts that ran lab 00 before the code refresh (for example the dry-run accounts): delete their whole `hytech_de_lab/` folder, then open `/Workspace/Shared/hytech-de-workshop/labs/00_Start_Here` in the shared folder and run all of it (run from your own copy, it copies nothing; the copy never overwrites existing files, so old copies keep the shared landing path in labs 02–04 and the old job notebooks, which don't know `report_date` or the participant's own landing zone)
 
-## 讲师控制：作业 `hytech_ws_drip_producer` (Instructor controls: job `hytech_ws_drip_producer`)
+## 实时数据：每位学员运行 00b (Live data: each participant runs 00b)
 
-| 何时 (When) | 参数 (Parameters) | 效果 (Effect) |
+课堂上不需要运行任何集中作业，也不需要 Triones 操作。每位学员在实验 00 第 1b 步把共享历史复制到自己的落地区（约 760 个文件、约 90 MB，只复制一次），之后需要新数据时自己运行 `00b_Live_Data`：
+
+| 何时 (When) | 学员运行 (Participant runs) | 效果 (Effect) |
 |---|---|---|
-| M3 开始（第 1 天，约 10:30）| `duration_minutes=150`, `interval_seconds=30` | M3–M4 期间持续有新的 CDC 文件到达 |
-| 第 2 天开始（约 09:30）| `duration_minutes=150` | 为作业实验和文件到达触发器提供实时数据 |
-| M5 演示，所有人完成首次运行后（本次议程不包括）| `new_server=mt5-hk-01`, `duration_minutes=10` | **上线一台新的 MT5 服务器**（全量 + CDC）。下一次管道运行无需改代码即可接入 |
-| M5 演示（本次议程不包括）| `bad_batch_pct=60`, `duration_minutes=2` | 坏批次 → 下一次作业运行时 DQ 门走 **false** 分支 |
+| 实验 02，第二次运行 Auto Loader 之前 | `00b_Live_Data`，`ticks` = 1 | 新的 CDC 文件 → Auto Loader 只处理新文件 |
+| 实验 03，第二次运行管道之前 | `ticks` = 5 | 管道只处理新文件；可能有客户出现新的 SCD2 版本 |
+| 实验 04 §4（文件到达触发器）| `ticks` = 1 | 自己的作业自动启动 |
+| 实验 04 §6（可选，在 03d 之后）| `new_server=mt5-hk-01` | 上线一台新的 MT5 服务器（全量 + CDC），无需改代码即可接入 |
+| 实验 04 §6（可选）| `bad_batch_pct=60`，然后运行作业 | DQ 闸门走 **false** 分支，`notify_dq_owner` 运行 |
 
-同一时间只能有一个滴灌运行（`max_concurrent_runs: 1`）。取消该运行即可提前停止。
+提醒学员：一次只运行一个 00b；完成 03d 之后才上线 `mt5-hk-01`；写入坏批次（`bad_batch_pct`）之后马上运行一次自己的作业，否则 04c 的第一次管道更新会处理这些坏行，DQ 闸门走 false 分支。
 
-| When | Parameters | Effect |
+作业 `hytech_ws_drip_producer` 仍然保留，但是可选的：它只写共享落地区（只有参考答案管道读取），用于讲师在自己的测试工作区里演示。不要在 Hytech 的课堂上运行它：学员重新运行实验 00 时，会把它写的文件复制进自己的落地区，成交编号会和他们自己的 tick 重复。
+
+Nothing runs centrally during class, and Triones has nothing to operate. In step 1b of lab 00 each participant copies the shared history into their own landing zone (about 760 files, about 90 MB, once); afterwards they run `00b_Live_Data` whenever a lab needs new data:
+
+| When | Participant runs | Effect |
 |---|---|---|
-| Start of M3 (Day 1, ~10:30) | `duration_minutes=150`, `interval_seconds=30` | New CDC files keep arriving through M3–M4 |
-| Start of Day 2 (~09:30) | `duration_minutes=150` | Live data for the Jobs lab and file-arrival triggers |
-| M5 demo, after everyone's first run (not on this agenda) | `new_server=mt5-hk-01`, `duration_minutes=10` | **Onboard a new MT5 server** (full load + CDC). The next pipeline run ingests it with no code change |
-| M5 demo (not on this agenda) | `bad_batch_pct=60`, `duration_minutes=2` | Bad batch → the DQ gate takes the **false** branch on the next job run |
+| Lab 02, before the second Auto Loader run | `00b_Live_Data` with `ticks` = 1 | New CDC files → Auto Loader processes only the new files |
+| Lab 03, before the second pipeline run | `ticks` = 5 | The pipeline processes only the new files; some clients may get a new SCD2 version |
+| Lab 04 §4 (file-arrival trigger) | `ticks` = 1 | Their own job starts by itself |
+| Lab 04 §6 (optional, after 03d) | `new_server=mt5-hk-01` | Onboards a new MT5 server (full load + CDC); ingested with no code change |
+| Lab 04 §6 (optional) | `bad_batch_pct=60`, then run the job | The DQ gate takes the **false** branch and `notify_dq_owner` runs |
 
-Only one drip run at a time (`max_concurrent_runs: 1`). Cancel the run to stop it early.
+Remind people: one 00b run at a time; onboard `mt5-hk-01` only after 03d; after a bad batch (`bad_batch_pct`), run their own job once straight away, otherwise the first pipeline update in 04c processes the bad rows and the DQ gate takes the false branch.
 
-讲师没有 Hytech 工作区的权限：要使用这些控制，请 Triones 运行。新增的实验 03c、03d、04c、09、10 都不依赖滴灌程序。在所有人完成 03d 之前不要上线 `mt5-hk-01`：03d 假设落地区中还没有这台服务器的文件。不要在有人做 04c 时使用 `bad_batch_pct`：共享落地区的坏数据会让每个人的 DQ 闸门走 false 分支，04c 的修复和回填检查会失败。
-
-Instructors have no access to Hytech's workspace: if you use these controls, Triones runs them. The new labs 03c,
-03d, 04c, 09 and 10 don't depend on the drip producer. Don't onboard `mt5-hk-01` before everyone has finished 03d:
-03d assumes the landing zone has no files from that server yet. Never use `bad_batch_pct` while anyone is in 04c: bad rows
-in the shared landing zone send everyone's DQ gate down the false branch, and 04c's repair and backfill checks fail.
+The job `hytech_ws_drip_producer` stays but is optional: it writes only to the shared landing zone (which only the solution pipeline reads), for an instructor's demo on their own test workspace. Don't run it in the Hytech class: a participant who re-runs lab 00 would copy its files into their own landing zone, and its deal numbers would repeat their own ticks'.
 
 ## 第 1 天流程 (Day 1 — run of show)
 
@@ -65,7 +68,7 @@ in the shared landing zone send everyone's DQ gate down the false branch, and 04
 |---|---|---|
 | 09:30 | **M1** 平台概览（30）| 数据湖仓、Unity Catalog、无服务器、声明式管道、Genie。展示 Hytech 的架构（MySQL → DMS → S3 → Auto Loader → SDP → Power BI/Genie），对照 `docs/workshop_plan.md` §2。**实验 00** 放在最后 10 分钟：每人创建自己的 schema 并复制实验 |
 | 10:00 | **M2** Unity Catalog（30）| 实验 01。讲解要点：标签 + 掩码就是 Robin 那套列标签检查框架的 UC 原生版本；受治理标签会强制限定允许的取值。演示：Catalog Explorer 血缘、访问申请 |
-| 10:30 | **M3** 数据接入（30）| **请 Triones 启动滴灌程序。** 实验 02。一分钟后重新运行 Auto Loader 单元格，指出它只处理新文件。演示：Lakeflow Connect NetSuite（GA）和 MySQL CDC（预览版），作为不依赖 DMS 的方案。缩短为 30 分钟：Lakeflow Connect 只做 5 分钟演示 |
+| 10:30 | **M3** 数据接入（30）| 实验 02。学员运行一次 `00b_Live_Data`（`ticks` = 1）后重新运行 Auto Loader 单元格，指出它只处理新文件。演示：Lakeflow Connect NetSuite（GA）和 MySQL CDC（预览版），作为不依赖 DMS 的方案。缩短为 30 分钟：Lakeflow Connect 只做 5 分钟演示 |
 | 11:00 | **M4** 声明式管道（90）| 实验 03：按 README 创建管道，讲解代码中的 5 个要点，运行。**要点：追加 vs MERGE**：mt5_deals 约 99.9% 是插入 → 只追加 + 很小的更正表。在 Hytech 的 POC 中，这次重新设计把成本从约 $480/天降到 $40/天以下（数字仅供讲师掌握）。演示：用 Lakeflow Designer 制作 IB 周报。然后实验 03b（10）→ **03c（20）**：每人在自己的预发布通道写坏批次。强调 FAIL 只让 silver 失败，下游跳过，其他表照常完成。**提醒：第 4 步之后管道会一直失败，直到第 6 步**；落后的学员把 `auto` 设为 `true`。→ **03d（15）**：6 种 Run if，看作业图的颜色（概念 15 · 实验 03 25 · 03b 10 · 03c 20 · 03d 15 · Lakeflow Designer 演示 5）|
 | 12:30 | 问答（30）| 追进度：落后的学员直接运行自己的管道（代码已完整）。离开前确认每个人 03c 的最后一个检查是 ✅（管道是绿色的，第 2 天的实验 04 需要它）；落后的学员把 03c/03d 的 `auto` 设为 `true` |
 
@@ -73,7 +76,7 @@ in the shared landing zone send everyone's DQ gate down the false branch, and 04
 |---|---|---|
 | 09:30 | **M1** Platform overview (30) | Lakehouse, UC, serverless, Lakeflow, Genie. Show Hytech's architecture (MySQL → DMS → S3 → Auto Loader → SDP → Power BI/Genie) next to `docs/workshop_plan.md` §2. **Lab 00** last 10 min: everyone creates their schema and copies the labs |
 | 10:00 | **M2** Unity Catalog (30) | Lab 01. Talk track: tags + masks are the UC-native version of Robin's column-tag check framework; governed tags enforce allowed values. Demo: Catalog Explorer lineage, access requests |
-| 10:30 | **M3** Ingestion (30) | **Triones starts the drip producer.** Lab 02. Re-run the Auto Loader cell after a minute and point out the new files only. Demo: Lakeflow Connect NetSuite (GA) and MySQL CDC (preview) as the DMS-free path. Shortened to 30 min: Lakeflow Connect is a 5-min demo |
+| 10:30 | **M3** Ingestion (30) | Lab 02. People run `00b_Live_Data` once (`ticks` = 1), then re-run the Auto Loader cell: point out the new files only. Demo: Lakeflow Connect NetSuite (GA) and MySQL CDC (preview) as the DMS-free path. Shortened to 30 min: Lakeflow Connect is a 5-min demo |
 | 11:00 | **M4** Declarative Pipelines (90) | Lab 03: create the pipeline (README), walk through the 5 key points in the code, run. **Lesson: append vs MERGE**: mt5_deals is about 99.9% inserts → append-only + tiny corrections table. In Hytech's POC this redesign cut cost from about $480/day to under $40/day (facilitator-only number). Demo: Lakeflow Designer builds the IB weekly report. Then lab 03b (10) → **03c (20)**: everyone writes a bad batch into their own staging lane. Stress that FAIL fails only the silver table, downstream is skipped and every other table completes. **Remind them: after step 4 the pipeline keeps failing until step 6**; anyone behind sets `auto` to `true`. → **03d (15)**: the six Run if conditions; read the colours in the job graph (concept 15 · lab 03 25 · 03b 10 · 03c 20 · 03d 15 · Lakeflow Designer demo 5) |
 | 12:30 | Q&A (30) | Catch-up: anyone behind just runs their own pipeline (the code is complete). Before people leave, check that everyone's last 03c check is ✅ (a green pipeline, which Day 2's lab 04 needs); anyone behind sets `auto` to `true` in 03c/03d |
 
@@ -81,14 +84,14 @@ in the shared landing zone send everyone's DQ gate down the false branch, and 04
 
 | 时间 (Time) | 环节 (Segment) | 备注 (Notes) |
 |---|---|---|
-| 09:30 | **M5** Lakeflow 作业（60）| **请 Triones 启动滴灌。** 实验 04（UI）。第一次运行会按设计在 `mt5-uk-01` 上失败 → 修复运行（清空 `fail_server`，保留 `servers`）。讲解 *Succeeded with failures*（成功但有失败）。演示：上线 `mt5-hk-01`；坏批次 → DQ false 分支；文件到达触发器；**以服务主体身份执行 `bundle deploy -t cicd`**（`docs/cicd_demo.md`，对应 Hytech "禁止直接访问生产环境"的优先事项）。追进度：`04b_Jobs_Catch_Up`。实验 04 之后做 **04c（25）**，时间很紧：第 2 步的运行（约 5 分钟）期间让学员读第 3–4 步；修复运行约 4 分钟；回填两天约 7 分钟：时间不够时照常对两天启动 Run backfill，然后进入下一个模块，回填在后台完成，课后再运行检查单元格。本次议程没有时间做上面的演示：坏批次和文件到达触发器由 04c 在每个人自己的通道里演示（文件到达是 04c 的加分题）；CI/CD 演示放到第 2 天问答，或跳过。检查单元格会等学员点 Run now / Repair run / Run backfill |
+| 09:30 | **M5** Lakeflow 作业（60）| 实验 04（UI）。第一次运行会按设计在 `mt5-uk-01` 上失败 → 修复运行（清空 `fail_server`，保留 `servers`）。讲解 *Succeeded with failures*（成功但有失败）。可选（实验 04 §4、§6，学员用 `00b_Live_Data` 自己完成）：文件到达触发器、上线 `mt5-hk-01`、坏批次 → DQ false 分支。演示：**以服务主体身份执行 `bundle deploy -t cicd`**（`docs/cicd_demo.md`，对应 Hytech "禁止直接访问生产环境"的优先事项）。追进度：`04b_Jobs_Catch_Up`。实验 04 之后做 **04c（25）**，时间很紧：第 2 步的运行（约 5 分钟）期间让学员读第 3–4 步；修复运行约 4 分钟；回填两天约 7 分钟：时间不够时照常对两天启动 Run backfill，然后进入下一个模块，回填在后台完成，课后再运行检查单元格。本次议程没有时间做上面的可选部分和演示：坏批次和文件到达触发器由 04c 在每个人自己的通道里演示（文件到达是 04c 的加分题）；CI/CD 演示放到第 2 天问答，或跳过。检查单元格会等学员点 Run now / Repair run / Run backfill |
 | 10:30 | **M6** Genie Code + 系统表（60）| **Genie Code（30）：**实验 05 提示词阶梯。先打开技能（把团队约定写成代码，是 Ray 的优先事项）。适合现场演示：用中文输入 L1 **系统表（30）：**打开 *Hytech DE Workshop - Cost and Health* 仪表盘（链接由 setup 任务 `cost_dashboard` 打印），然后通过受治理的 `ops` 视图做实验 06。账单有数小时延迟，所以看第 1 天的运行。呼应 Hytech 每周的成本复盘（成本报表由 Triones 的团队负责）。预告：Genie ZeroOps（私有预览版）。回顾放到第 2 天问答开始时（5 分钟回顾）；测验 08 作为课后作业 |
 | 11:30 | **M7** AI/BI 仪表盘、Lakehouse RT 与 Genie（60）| 实验 09（15）：每人搭建仪表盘，把计算资源切换到 `hytech_workshop_rt`，对比查询历史。Lakehouse RT 讲解（5）。实验 10（25）：创建并配置 Genie Agent，然后用 Genie One；先提问让它自动找 Agent，再用 Ask → 选择 Agent。Lark 演示（10，讲师自己的环境）。缓冲（5） |
 | 12:30 | 问答（30）| 先做 5 分钟回顾（两天的内容对应考试各部分）；反馈表；实验 07（AI 函数）和测验 08 作为可选的课后练习 |
 
 | Time | Segment | Notes |
 |---|---|---|
-| 09:30 | **M5** Lakeflow Jobs (60) | **Triones starts the drip.** Lab 04 (UI). First run fails on `mt5-uk-01` by design → Repair run (clear `fail_server`, keep `servers`). Explain *Succeeded with failures*. Demos: onboard `mt5-hk-01`; bad batch → DQ false branch; file-arrival trigger; **bundle deploy `-t cicd` as a service principal** (`docs/cicd_demo.md`; Hytech's "no direct prod access" priority). Catch-up: `04b_Jobs_Catch_Up`. After lab 04, **04c (25)** is tight: have people read steps 3–4 while the step 2 run goes (about 5 min); the repair takes about 4 min and the two-day backfill about 7: if time is short, start Run backfill for both days as usual and move on; the runs finish in the background and people re-run the check cell later. This agenda has no time for the demos above: 04c covers the bad batch and the file-arrival trigger in each person's own lane (file arrival is 04c's bonus); move the CI/CD demo to the Day 2 Q&A, or skip it. The check cells wait for people to click Run now / Repair run / Run backfill |
+| 09:30 | **M5** Lakeflow Jobs (60) | Lab 04 (UI). First run fails on `mt5-uk-01` by design → Repair run (clear `fail_server`, keep `servers`). Explain *Succeeded with failures*. Optional (lab 04 §4 and §6, each person with `00b_Live_Data`): the file-arrival trigger, onboarding `mt5-hk-01`, a bad batch → DQ false branch. Demo: **bundle deploy `-t cicd` as a service principal** (`docs/cicd_demo.md`; Hytech's "no direct prod access" priority). Catch-up: `04b_Jobs_Catch_Up`. After lab 04, **04c (25)** is tight: have people read steps 3–4 while the step 2 run goes (about 5 min); the repair takes about 4 min and the two-day backfill about 7: if time is short, start Run backfill for both days as usual and move on; the runs finish in the background and people re-run the check cell later. This agenda has no time for the optional parts and the demo above: 04c covers the bad batch and the file-arrival trigger in each person's own lane (file arrival is 04c's bonus); move the CI/CD demo to the Day 2 Q&A, or skip it. The check cells wait for people to click Run now / Repair run / Run backfill |
 | 10:30 | **M6** Genie Code + system tables (60) | **Genie Code (30):** Lab 05 ladder. Open the skill first (team conventions as code, Ray's priority). Good live prompt: L1 in Chinese **System tables (30):** Open the *Hytech DE Workshop - Cost and Health* dashboard (link printed by setup task `cost_dashboard`), then Lab 06 via governed `ops` views. Billing lags by hours, so look at Day-1 runs. Tie back to Hytech's weekly cost review (Triones' team owns cost reporting). Teaser: Genie ZeroOps (private preview). The recap moves to the start of the Day 2 Q&A (a 5-minute recap); quiz 08 becomes homework |
 | 11:30 | **M7** AI/BI dashboards, Lakehouse RT and Genie (60) | Lab 09 (15): everyone builds a dashboard, switches its compute to `hytech_workshop_rt` and compares query history. Lakehouse RT talk (5). Lab 10 (25): create and configure a Genie Agent, then Genie One: ask once routed, then Ask → pick the agent. Lark demo (10, the instructor's own environment); buffer (5) |
 | 12:30 | Q&A (30) | A 5-minute recap first (map the two days to the exam sections); feedback form; lab 07 (AI Functions) and quiz 08 as optional homework |

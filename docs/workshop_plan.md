@@ -68,7 +68,10 @@
  mt5-sg-01 · mt5-sg-02 · mt5-uk-01 · mt5-cy-01
         │ DMS-style CDC Parquet: LOAD00000001.parquet + yyyymmdd-hhmmssfff.parquet (Op = I/U/D, cdc_ts)
         ▼
- /Volumes/hytech_de_workshop/raw/landing/mt5/<server>/<table>/      /landing/app_events/<date>/
+ /Volumes/hytech_de_workshop/raw/landing/mt5/<server>/<table>/      /landing/app_events/<date>/   (shared history)
+        │  lab 00 copies it per participant · 00b_Live_Data adds new DMS files on demand
+        ▼
+ /Volumes/hytech_de_workshop/u_<name>/landing/mt5/<server>/<table>/   /landing/app_events/<date>/
         │
         │  Lakeflow Spark Declarative Pipeline (serverless, per participant schema u_<name>)
         ▼
@@ -107,7 +110,7 @@
 | `ref/symbols.csv` | 交易品种 (symbol) | 40 | 资产类别和合约规模（COPY INTO）<br>Asset class and contract size (COPY INTO) |
 | `ref/ib_hierarchy.csv` | IB | 约 60 (about 60) | IB 树和返佣计划<br>IB tree and rebate plan |
 | `ref/fx_rates_daily.csv` | 日 × 货币 (day × ccy) | 约 900 (about 900) | 报价货币 → USD（CTAS）<br>Quote-currency → USD (CTAS) |
-| 滴灌程序作业 (Drip producer job) | — | 实时 (live) | 每 30 秒新的 CDC 文件；可上线新服务器（`mt5-hk-01`）并注入坏批次<br>New CDC files every 30 s; can onboard a new server (`mt5-hk-01`) and inject a bad batch |
+| 实时数据 `00b_Live_Data` (Live data) | — | 按需 (on demand) | 每位学员向自己的落地区写入新的 CDC 文件；可上线新服务器（`mt5-hk-01`）并注入坏批次。中心滴灌作业是可选的<br>Each participant writes new CDC files into their own landing zone; can onboard a new server (`mt5-hk-01`) and inject a bad batch. The central drip job is optional |
 
 ## 4. 现场表演流程 (Run of show)
 
@@ -123,7 +126,7 @@ One instructor presents while the other circulates; swap per module. With 20 new
 | 10:00 | **M2 Unity Catalog** (30) | 3 级命名空间、所有权、权限、volume、标签、掩码、行过滤器、血缘<br>3-level namespace, ownership, privileges, volumes, tags, masks, row filters, lineage | 基于属性的访问控制和受治理标签（讲师演示）、访问请求<br>ABAC with governed tags (instructor), access requests | `labs/01_Unity_Catalog`：授权、标签、电子邮件/电话列掩码、按品牌行过滤器<br>`labs/01_Unity_Catalog`: grants, tags, column mask on email/phone, row filter by brand | 掩盖的 `users_snapshot` 表<br>Masked `users_snapshot` table |
 | 10:30 | **M3 数据接入 (Ingestion)** (30) | 批量 vs 增量 vs 流式；CTAS / COPY INTO / Auto Loader；元数据列；救援数据；企业连接器。缩短为 30 分钟：Lakeflow Connect 只做 5 分钟演示<br>Batch vs incremental vs streaming; CTAS / COPY INTO / Auto Loader; metadata columns; rescued data; enterprise connectors. Shortened to 30 min: Lakeflow Connect is a 5-min demo | Lakeflow Connect NetSuite（正式发布）、MySQL CDC（预览）<br>Lakeflow Connect NetSuite (GA), MySQL CDC (preview) | `labs/02_Ingestion`：CTAS FX 汇率、COPY INTO 交易品种（×2 用于幂等性）、Auto Loader DMS Parquet、JSON 带救援数据<br>`labs/02_Ingestion`: CTAS FX rates, COPY INTO symbols (×2 for idempotency), Auto Loader DMS Parquet, JSON with rescued data | 4 个 bronze 表<br>4 bronze tables |
 | 11:00 | **M4 Spark 声明式管道 (Spark Declarative Pipelines)** (90) | 流式表 vs 物化视图、AUTO CDC SCD1/2、期望、事件日志；**追加 vs MERGE 成本课程**；数据质量期望（WARN / DROP / FAIL）、隔离表、血缘、事件日志、作业中的 Depends on 与 Run if<br>Streaming tables vs MVs, AUTO CDC SCD1/2, expectations, event log; **append vs MERGE cost lesson**; data-quality expectations (WARN / DROP / FAIL), quarantine, lineage, event log, Depends on and Run if in a job | Lakeflow 管道编辑器；Lakeflow Designer（IB 周报）<br>Lakeflow Pipelines Editor; Lakeflow Designer (IB weekly report) | `labs/03_pipeline`：读懂 bronze/silver/gold 中的要点，创建并运行管道；然后 `labs/03b_Explore_Pipeline`；然后 `labs/03c_Data_Quality_and_Monitoring`（20）和 `labs/03d_Run_If_Dependencies`（15）<br>`labs/03_pipeline`: read the key points in bronze/silver/gold, create and run the pipeline; then `labs/03b_Explore_Pipeline`; then `labs/03c_Data_Quality_and_Monitoring` (20) and `labs/03d_Run_If_Dependencies` (15) | 绿色管道更新；gold 集市；预发布通道 + 隔离表；作业 `run_if_lab_<name>`<br>Green pipeline update; gold marts; staging lane + quarantine; job `run_if_lab_<name>` |
-| 12:30 | **第 1 天问答 (Q&A Day 1)** (30) | — | 滴灌程序运行（由 Triones 运行）：观看新 CDC 在下次更新时落地<br>Drip producer running (run by Triones): watch new CDC land on the next update | 追进度：复制解决方案文件；离开前确认 03c 的最后一个检查是 ✅（管道是绿色的）<br>Catch-up: copy solution files; before leaving, check that 03c's last check is ✅ (a green pipeline) | 每个人都有一个管道<br>Everyone has a pipeline |
+| 12:30 | **第 1 天问答 (Q&A Day 1)** (30) | — | 学员运行 `00b_Live_Data`：观看新 CDC 在下次更新时落地<br>People run `00b_Live_Data`: watch new CDC land on the next update | 追进度：复制解决方案文件；离开前确认 03c 的最后一个检查是 ✅（管道是绿色的）<br>Catch-up: copy solution files; before leaving, check that 03c's last check is ✅ (a green pipeline) | 每个人都有一个管道<br>Everyone has a pipeline |
 
 ### 第 2 天 — 周三 10 月 14 日 (09:30–13:00) (Day 2 — Wed 14 Oct (09:30–13:00))
 
@@ -136,13 +139,13 @@ One instructor presents while the other circulates; swap per module. With 20 new
 
 议程按客户 10 月 10 日的更新：M3 30 分钟、M4 90 分钟、M5 60 分钟、M7 60 分钟，AI 函数不在议程中。<br>Agenda per the customer's 10 Oct update: M3 30 min, M4 90, M5 60, M7 60; AI Functions is not on the agenda.
 
-讲师没有 Hytech 工作区的权限：滴灌程序由 Triones 运行，新增的实验都不依赖它。<br>Instructors have no access to Hytech's workspace: Triones runs the drip producer, and none of the new labs depend on it.
+讲师没有 Hytech 工作区的权限，课堂上也不需要集中运行任何作业：每位学员在自己的 schema 里用 `00b_Live_Data` 生成实时数据。<br>Instructors have no access to Hytech's workspace, and nothing needs to run centrally during class: every participant generates their own live data with `00b_Live_Data` in their own schema.
 
 ### 关键"精彩时刻" (Key "wow" moments)
 
-- **M3/M4：** 滴灌程序写入 MySQL 更改，它在下次管道更新时出现在 silver 层，SCD2 历史可见。
+- **M3/M4：** `00b_Live_Data` 写入 MySQL 更改，它在下次管道更新时出现在 silver 层，SCD2 历史可见。
 
-  **M3/M4:** the drip producer writes a MySQL change and it appears in silver on the next pipeline update, with SCD2 history visible.
+  **M3/M4:** `00b_Live_Data` writes a MySQL change, and it appears in silver on the next pipeline update, with SCD2 history visible.
 
 - **M4：** 在只追加的成交表上使用 `DESCRIBE HISTORY`，与基于 MERGE 的修正表对比，加上 POC 成本数字：成本随*更改的数据*而不是*存储的数据*扩展。
 
@@ -264,7 +267,8 @@ One instructor presents while the other circulates; swap per module. With 20 new
 | FMAPI 模型在 Hytech 的地区未提供<br>FMAPI model not served in Hytech's region | `llm_endpoint` 是一个参数；检查跨地区路由；回退到任何可用的聊天模型<br>`llm_endpoint` is a parameter; check cross-geo routing; fallback to any available chat model |
 | 学员无法读取系统表<br>Participants can't read system tables | `ops` 中的受治理视图（定义者的权利），过滤到培训工作区<br>Governed views in `ops` (definer's rights), filtered to the training workspace |
 | 新人在 M3–M4 中落后<br>Newcomers fall behind in M3–M4 | 追进度单元格和解决方案文件；浮动讲师<br>Catch-up cells and solution files; the floater instructor |
-| 20 个带文件到达触发器的管道<br>20 pipelines with file-arrival triggers | 学员手动或按计划运行；讲师演示触发器<br>Participants run manually or on schedule; the instructor demos the trigger |
+| 20 个带文件到达触发器的作业<br>20 jobs with file-arrival triggers | 每个触发器只看自己的落地区，只有自己的 00b 会触发它；演示后暂停<br>Each trigger watches only its own landing zone, so only that person's 00b fires it; pause it after the demo |
+| 20 位学员同时运行实验 00 的复制（每人约 760 个文件、约 90 MB）<br>20 people run lab 00's copy at once (about 760 files and 90 MB each) | 在演练时计时；复制在云端的无服务器计算上运行，不经过会场网络；中断后重新运行即可（跳过已复制的文件）<br>Time it at the dry run; the copy runs on serverless compute in the cloud, not over the venue network; re-run it after an interruption (files already copied are skipped) |
 | 账户级组 / 受治理标签需要账户管理员<br>Account-level groups / governed tags need account admin | 设置正常降级：授权被跳过并显示警告；ABAC 仅限讲师演示<br>Setup degrades gracefully: grants are skipped with a warning; ABAC is instructor-demo only |
 | 账单数据延迟数小时<br>Billing data lags by hours | 在第 2 天针对第 1 天的运行运行成本实验<br>Run the cost lab on Day 2 against Day-1 runs |
 | Lakehouse RT（Beta）需要客户团队为账户开启，然后在 Previews 中开启<br>Lakehouse RT (Beta) needs the account team to enable it for the account, then the Previews toggle | 尽早申请；没有时实验 09 用 `hytech_workshop_sql` 完成，步骤相同<br>Ask early; without it lab 09 runs on `hytech_workshop_sql` with the same steps |

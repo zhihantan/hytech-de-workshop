@@ -91,8 +91,6 @@ def test_no_short_path_or_instructor_action_that_the_labs_contradict():
     assert "只回填一天" not in facilitator and "backfill one day" not in facilitator
     assert "讲师上线它" not in plan and "instructor onboards it" not in plan
     assert "bad_batch_pct" in facilitator and "04c" in facilitator[facilitator.index("bad_batch_pct"):]
-    for path in ("docs/workshop_plan.md", "docs/facilitator_guide.md"):
-        assert "Triones" in read(path) and "滴灌" in read(path)
 
 
 def test_troubleshooting_explains_the_04c_waits():
@@ -100,3 +98,29 @@ def test_troubleshooting_explains_the_04c_waits():
     row = next(line for line in text.splitlines() if "Run now / Repair run" in line)
     assert "10 分钟" in row and "Repair run" in row and "不是 Run now" in row
     assert "labs/03_pipeline/README.md" in text
+
+
+STALE_DRIP = ("启动滴灌", "starts the drip", "start the drip", "讲师的”滴灌”", "drip producer” continuously",
+              "drive the live data", "由 Triones 运行", "Triones runs the drip", "讲师的 drip producer",
+              "instructor's drip producer", "讲师的滴灌程序", "请讲师启动滴灌")
+
+
+def test_no_doc_or_lab_waits_for_a_centrally_run_drip():
+    for path in ("README.md", "docs/facilitator_guide.md", "docs/participant_guide_zh.md", "docs/setup_guide_triones.md",
+                 "docs/troubleshooting.md", "docs/workshop_plan.md", "labs/02_Ingestion.py", "labs/03_pipeline/README.md",
+                 "labs/03b_Explore_Pipeline.sql", "labs/04_Lakeflow_Jobs.md"):
+        text = read(path)
+        for phrase in STALE_DRIP:
+            assert phrase not in text, (path, phrase)
+
+
+def test_00b_is_findable_from_every_entry_point_and_guide():
+    for path in ENTRY_POINTS + ("docs/facilitator_guide.md", "docs/workshop_plan.md", "docs/setup_guide_triones.md",
+                                "docs/troubleshooting.md"):
+        assert "00b_Live_Data" in read(path), path
+
+
+def test_troubleshooting_covers_your_own_live_data():
+    text = read("docs/troubleshooting.md")
+    for needle in ("00b_Live_Data", "raw.producer", "Full refresh all", "bad_batch_pct"):
+        assert needle in text, needle
