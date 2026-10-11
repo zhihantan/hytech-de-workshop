@@ -2,6 +2,7 @@
 # MAGIC %md
 # MAGIC # 02 · 数据接入 (Data ingestion) — CTAS · COPY INTO · Auto Loader · JSON & rescued data
 # MAGIC
+# MAGIC
 # MAGIC | 方式 (Method) | 适合 (Use case) | 增量? (Incremental?) |
 # MAGIC |---|---|---|
 # MAGIC | `CREATE TABLE AS SELECT` + `read_files` | 一次性 / 小文件全量重建 (one-off / small file full rebuild) | 否：每次全量 (No: full each time) |
@@ -16,11 +17,11 @@ from pyspark.sql import functions as F
 catalog = "hytech_de_workshop"
 me = spark.sql("SELECT current_user()").first()[0]
 my_schema = "u_" + "".join(ch if ch.isalnum() else "_" for ch in me.split("@")[0].lower()).strip("_")
-landing = f"/Volumes/{catalog}/raw/landing"
+landing = f"/Volumes/{catalog}/{my_schema}/landing"   # 你自己的落地区（实验 00 第 1b 步）(your own landing zone, lab 00 step 1b)
 ref = f"/Volumes/{catalog}/raw/ref"
 checkpoints = f"/Volumes/{catalog}/{my_schema}/checkpoints"
 spark.sql(f"USE {catalog}.{my_schema}")
-print("schema:", f"{catalog}.{my_schema}", "| checkpoints:", checkpoints)
+print("schema:", f"{catalog}.{my_schema}", "| landing:", landing, "| checkpoints:", checkpoints)
 
 # COMMAND ----------
 
@@ -106,9 +107,9 @@ print("rows in this run:", sum(p["numInputRows"] for p in query.recentProgress))
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC **再运行一次上面的 Auto Loader 单元格 (run the Auto Loader cell again):** 如果没有新文件，`rows in this run: 0`。讲师的 drip producer 每 30 秒写入新的 CDC 文件 → 再运行就只会读到那些新文件。
+# MAGIC **再运行一次上面的 Auto Loader 单元格 (run the Auto Loader cell again):** 如果没有新文件，`rows in this run: 0`。打开 `00b_Live_Data`，用 `ticks` = 1 运行一次：它向你的落地区写入新的 CDC 文件 → 再运行 Auto Loader 单元格，就只会读到那些新文件。
 # MAGIC
-# MAGIC If there are no new files, you see `rows in this run: 0`. The instructor's drip producer writes new CDC files every 30 seconds → re-run to read only those new files.
+# MAGIC If there are no new files, you see `rows in this run: 0`. Open `00b_Live_Data` and run it once with `ticks` = 1: it writes new CDC files into your landing zone → run the Auto Loader cell again, and it reads only those new files.
 
 # COMMAND ----------
 

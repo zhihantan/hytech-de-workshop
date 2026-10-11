@@ -7,6 +7,7 @@ import pytest
 
 ROOT = os.path.join(os.path.dirname(__file__), "..")
 PAIRS = [
+    ("labs/02_Ingestion.py", "solutions/02_Ingestion.py"),
     ("labs/staging_feed.py", "solutions/staging_feed.py"),
     ("labs/run_if_spec.py", "solutions/run_if_spec.py"),
     ("labs/03c_Data_Quality_and_Monitoring.py", "solutions/03c_Data_Quality_and_Monitoring.py"),

@@ -39,3 +39,42 @@ def test_lab_00_copies_the_history_into_the_participants_own_volumes():
     assert 'landing = f"/Volumes/{catalog}/{my_schema}/landing"' in text
     assert 'copy_tree(f"{src_repo}/src", f"{dst_labs}/src")' in text
     assert "`00b_Live_Data`" in text
+
+
+PERSONAL = "/Volumes/hytech_de_workshop/u_<your_name>/landing"
+
+
+def test_lab_02_reads_your_own_landing_and_points_at_00b():
+    text = read("labs/02_Ingestion.py")
+    assert 'landing = f"/Volumes/{catalog}/{my_schema}/landing"' in text and "raw/landing" not in text
+    assert "00b_Live_Data" in text
+
+
+def test_lab_03_readme_sets_your_own_landing_root_and_says_when_to_full_refresh():
+    text = read("labs/03_pipeline/README.md")
+    assert f"| `landing_root` | `{PERSONAL}`" in text
+    assert "00b_Live_Data" in text and "Full refresh all" in text
+    assert "第 3 步" in text and "step 3" in text and "第 4 步" not in text
+
+
+def test_lab_04_trigger_and_demos_use_your_own_landing_and_00b():
+    text = read("labs/04_Lakeflow_Jobs.md")
+    assert f"`{PERSONAL}/mt5/`" in text and "raw/landing" not in text and "讲师演示" not in text
+    section = text[text.index("## 6 ·"):]
+    for needle in ("00b_Live_Data", "new_server=mt5-hk-01", "bad_batch_pct=60", "03d", "fail_server"):
+        assert needle in section, needle
+
+
+def test_03b_freshness_comment_names_00b():
+    assert "（你的 00b 运行）" in read("labs/03b_Explore_Pipeline.sql")
+
+
+def test_reconcile_checks_the_participants_own_landing_before_the_shared_one():
+    text = read("jobs/reconcile_server.py")
+    personal = text.index('landing_root = f"/Volumes/{catalog}/{schema}/landing"')
+    assert personal < text.index('landing_root = f"/Volumes/{catalog}/raw/landing"')
+    assert "if not os.path.isdir(landing_root):" in text
+
+
+def test_setup_grants_read_on_the_generator_state():
+    assert "GRANT READ VOLUME ON VOLUME {catalog}.raw.producer TO `{group}`" in read("setup/01_create_catalog_schemas.py")
