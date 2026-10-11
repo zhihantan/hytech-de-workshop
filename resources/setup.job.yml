@@ -46,6 +46,9 @@ resources:
             - task_key: ops_views
           notebook_task:
             notebook_path: ../setup/07_cost_dashboard.py
+        - task_key: workshop_warehouses
+          notebook_task:
+            notebook_path: ../setup/08_workshop_warehouses.py
         - task_key: install_genie_code_skill
           notebook_task:
             notebook_path: ../setup/06_install_genie_code_skill.py

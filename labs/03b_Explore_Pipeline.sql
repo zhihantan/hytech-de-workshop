@@ -123,8 +123,8 @@ DESCRIBE HISTORY silver_mt5_deal_corrections LIMIT 5;
 
 -- COMMAND ----------
 
--- 仅来自最近 CDC 文件（滴灌程序）的行；全量加载行的 cdc_ts 都是加载时间
--- Only rows from recent CDC files (the drip producer); full-load rows all carry cdc_ts = load time
+-- 仅来自最近 CDC 文件（你的 00b 运行）的行；全量加载行的 cdc_ts 都是加载时间
+-- Only rows from recent CDC files (your 00b runs); full-load rows all carry cdc_ts = load time
 SELECT server_id,
        max(cdc_ts)                                                                  AS last_dms_commit,
        max(ingested_at)                                                             AS last_ingested,

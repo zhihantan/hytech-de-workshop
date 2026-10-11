@@ -74,9 +74,9 @@ Compute: **Serverless** for every task.
 
 ## 4 · 触发器与通知 (Triggers and notifications)
 
-- **添加触发器 → 文件到达** 在 `/Volumes/hytech_de_workshop/raw/landing/mt5/`（触发器之间最少 60 秒）。讲师的 drip producer 写入新文件 → 你的作业自动启动。演示后 **暂停** 触发器，避免 20 个作业持续触发。
+- **添加触发器 → 文件到达** 在你自己的落地区 `/Volumes/hytech_de_workshop/u_<your_name>/landing/mt5/`（触发器之间最少 60 秒）。用 `ticks` = 1 运行 `00b_Live_Data` → 新文件到达 → 你的作业自动启动（大约一分钟内）。演示后 **暂停** 触发器，以后运行 00b 时作业就不会再自动启动。几分钟后作业还没有启动？在作业的 **Schedules & Triggers** 中查看触发器的状态，或者直接 **Run now**，继续后面的步骤。
 
-  **Add trigger → File arrival** on `/Volumes/hytech_de_workshop/raw/landing/mt5/` (minimum 60 s between triggers). The instructor's drip producer writes new files → your job starts by itself. **Pause** the trigger again after the demo, so 20 jobs don't keep firing.
+  **Add trigger → File arrival** on your own landing zone `/Volumes/hytech_de_workshop/u_<your_name>/landing/mt5/` (minimum 60 s between triggers). Run `00b_Live_Data` with `ticks` = 1 → new files arrive → your job starts by itself (within about a minute). **Pause** the trigger again after the demo, so your later 00b runs don't start the job. No run after a few minutes? Check the trigger's status under the job's **Schedules & Triggers**, or just click **Run now** and carry on.
 
 - 其他选项：**定时** (e.g. 每小时)、**表更新** (当上游表更新时启动，用于团队间管道依赖)、**持续**。
 
@@ -94,12 +94,16 @@ Compute: **Serverless** for every task.
 
 Open your job → **⋮ → View as code (YAML)** and compare with `resources/solution.job.yml` in the repo. That YAML is deployed with **Declarative Automation Bundles** (`databricks bundle deploy -t prod`), from GitLab CI, running as a service principal. This is how Hytech can **remove direct access to production**: changes go through review and CI/CD, and nobody edits prod by hand.
 
-## 6 · 讲师演示 (Instructor demos)
+## 6 · 你自己的演示（可选，有时间再做）(Your own demos — optional, if time allows)
 
-- **实时上线新服务器**：使用 `new_server=mt5-hk-01` 运行 drip producer（DMS 全量加载 + CDC）。bronze glob `mt5/*/<table>/` 在下次管道运行时自动拾取，无需改代码。
+用 `00b_Live_Data` 自己完成，只影响你自己的落地区、管道和作业。
 
-  **Onboard a new server live:** the drip producer with `new_server=mt5-hk-01` (DMS full load + CDC). The bronze glob `mt5/*/<table>/` picks it up on the next pipeline run, with no code change.
+Do these yourself with `00b_Live_Data`; they only touch your own landing zone, pipeline and job.
 
-- **坏数据批次**：使用 `bad_batch_pct=60` 运行 drip producer。期望丢弃坏行，`dq_drop_pct` 超过 1%，条件走 **false** 分支，`notify_dq_owner` 发出告警。
+- **实时上线新服务器**（完成 03d **之后**再做：03d 预期你的落地区里还没有这台服务器）：用 `new_server=mt5-hk-01` 运行 `00b_Live_Data`（DMS 全量加载 + CDC）。然后在作业 → **Job parameters** 中清空 `fail_server`，给 `servers` 加上 `"mt5-hk-01"`，再 **Run now**。bronze glob `mt5/*/<table>/` 在这次管道运行中自动拾取它，无需改代码；`reconcile_servers` 多了一次迭代。
 
-  **Bad batch:** the drip producer with `bad_batch_pct=60`. Expectations drop the bad rows, `dq_drop_pct` goes above 1%, the condition takes the **false** branch, and `notify_dq_owner` raises the alert.
+  **Onboard a new server live** (only **after** 03d: 03d expects your landing zone to have no files from that server yet): run `00b_Live_Data` with `new_server=mt5-hk-01` (DMS full load + CDC). Then in the job → **Job parameters**, clear `fail_server` and add `"mt5-hk-01"` to `servers`, and click **Run now**. The bronze glob `mt5/*/<table>/` picks it up in this pipeline run, with no code change, and `reconcile_servers` gets one more iteration.
+
+- **坏数据批次**：用 `bad_batch_pct=60` 运行 `00b_Live_Data`，然后马上 **Run now** 你的作业（`fail_server` 已清空）。期望丢弃坏行，`dq_drop_pct` 超过 1%，条件走 **false** 分支，`notify_dq_owner` 发出告警。这次运行处理了坏行，所以之后的 04c 不受影响。
+
+  **Bad batch:** run `00b_Live_Data` with `bad_batch_pct=60`, then **Run now** your job straight away (with `fail_server` cleared). Expectations drop the bad rows, `dq_drop_pct` goes above 1%, the condition takes the **false** branch, and `notify_dq_owner` raises the alert. This run processes the bad rows, so 04c later isn't affected.

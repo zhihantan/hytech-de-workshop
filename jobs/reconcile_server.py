@@ -22,11 +22,18 @@ dbutils.widgets.text("schema", "")
 dbutils.widgets.text("server_id", "mt5-sg-01")
 dbutils.widgets.text("fail_server", "", "Lab: make this server fail on purpose")
 
+import os
+
 catalog = dbutils.widgets.get("catalog")
 schema = dbutils.widgets.get("schema")
 server = dbutils.widgets.get("server_id").strip()
 cs = f"{catalog}.{schema}"
-landing = f"/Volumes/{catalog}/raw/landing/mt5/{server}/mt5_deals"
+# 学员的管道读取自己的落地区（实验 00 第 1b 步）；解决方案作业（schema = solutions）读取共享的落地区
+# A participant's pipeline reads their own landing zone (lab 00 step 1b); the solution job (schema = solutions) reads the shared one
+landing_root = f"/Volumes/{catalog}/{schema}/landing"
+if not os.path.isdir(landing_root):
+    landing_root = f"/Volumes/{catalog}/raw/landing"
+landing = f"{landing_root}/mt5/{server}/mt5_deals"
 
 # COMMAND ----------
 

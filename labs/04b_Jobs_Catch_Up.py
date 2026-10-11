@@ -58,6 +58,7 @@ settings = {
         {"name": "servers", "default": '["mt5-sg-01","mt5-sg-02","mt5-uk-01","mt5-cy-01"]'},
         {"name": "llm_endpoint", "default": dbutils.widgets.get("llm_endpoint")},
         {"name": "fail_server", "default": "mt5-uk-01"},
+        {"name": "report_date", "default": ""},
     ],
     "tasks": [
         {"task_key": "run_pipeline", "pipeline_task": {"pipeline_id": pipeline_id}, "max_retries": 1},

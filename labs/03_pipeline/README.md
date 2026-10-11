@@ -6,9 +6,9 @@ Build bronze → silver → gold for the MT5 data in **your own schema** `u_<nam
 
 ## 1 · 创建管道 (Create the pipeline) — Lakeflow Pipelines Editor
 
-1. 首先将此文件夹复制到你的主目录（`labs/00_Start_Here` → 第 4 步会为你完成）：`/Users/<you>/hytech_de_lab/03_pipeline/`
+1. 首先将此文件夹复制到你的主目录（`labs/00_Start_Here` → 第 3 步会为你完成）：`/Users/<you>/hytech_de_lab/03_pipeline/`
 
-   Copy this folder to your home first (`labs/00_Start_Here` → step 4 does it for you):
+   Copy this folder to your home first (`labs/00_Start_Here` → step 3 does it for you):
    `/Users/<you>/hytech_de_lab/03_pipeline/`
 
 2. **New → ETL pipeline**（Lakeflow 管道编辑器）。选择 **Add existing assets** 并设置：
@@ -27,8 +27,12 @@ Build bronze → silver → gold for the MT5 data in **your own schema** `u_<nam
    **Settings → Configuration** — add two key/value pairs:
    | 键 (Key) | 值 (Value) |
    |---|---|
-   | `landing_root` | `/Volumes/hytech_de_workshop/raw/landing` |
+   | `landing_root` | `/Volumes/hytech_de_workshop/u_<your_name>/landing`（你自己的落地区，实验 00 第 1b 步打印了这个值）<br>(your own landing zone; step 1b of lab 00 printed this value) |
    | `ref_root` | `/Volumes/hytech_de_workshop/raw/ref` |
+
+   > 你在这次更新之前已经用共享落地区 `/Volumes/hytech_de_workshop/raw/landing` 建好了管道？把 `landing_root` 改成你自己的落地区之后，运行一次 **Full refresh all**（完全刷新）；否则 bronze 会从新路径把全部历史再读一遍，silver 里会出现重复。
+   >
+   > Built the pipeline on the shared landing zone `/Volumes/hytech_de_workshop/raw/landing` before this update? After you switch `landing_root` to your own landing zone, run **Full refresh all** once; otherwise bronze reads the whole history again from the new path and silver gets duplicates.
 
 4. **Settings → Advanced → Publish event log to metastore**：打开，表名 `pipeline_event_log`（catalog `hytech_de_workshop`，schema `u_<your_name>`）。Lab 04 中的作业会读取它。
 
@@ -61,9 +65,10 @@ Use **Dry run** to validate, then **Run pipeline**. Broke the code? Copy the ori
 ## 3 · 观察 (Observe)
 
 - 图（Graph）：哪些表是流式表，哪些是物化视图？为什么？期望（Expectations）选项卡 `silver_mt5_deals`：有多少行被删除，按哪条规则删除？
-- 在讲师的滴灌程序写入新文件后，再次运行管道：只处理新文件（增量）。然后打开 `labs/03b_Explore_Pipeline`。
+- 运行 `00b_Live_Data`（`ticks` = 5）写入新文件，再次运行管道：只处理新文件（增量）；有些客户的杠杆可能会改变，在 `03b` 第 3 节里多出一个 SCD2 版本。然后打开 `labs/03b_Explore_Pipeline`。
 
 - Graph: which tables are streaming tables, which are materialized views? Why?
 - Expectations tab of `silver_mt5_deals`: how many rows were dropped, and by which rule?
-- Run the pipeline again after the instructor's drip producer has written new files: only the new
-  files are processed (incremental). Then open `labs/03b_Explore_Pipeline`.
+- Run `00b_Live_Data` (`ticks` = 5) to write new files, then run the pipeline again: only the new
+  files are processed (incremental); some clients' leverage may change, adding an SCD2 version you can
+  see in section 3 of `03b`. Then open `labs/03b_Explore_Pipeline`.

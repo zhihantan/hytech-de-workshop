@@ -9,7 +9,7 @@
 # MAGIC | 资源 (Resource) | 用途 (Purpose) |
 # MAGIC |---|---|
 # MAGIC | 作业 (Job) `hytech_ws_setup` | catalog、schema、volume、授权、合成数据、学员 schema、`ops` 视图、成本仪表盘、Genie Code 技能<br>Catalog, schemas, volumes, grants, synthetic data, participant schemas, `ops` views, cost dashboard, Genie Code skill |
-# MAGIC | 作业 (Job) `hytech_ws_drip_producer` | 讲师专用：课堂上持续写入新的 CDC 文件（这里不运行）<br>Instructor-only: keeps new CDC files arriving during class (not run here) |
+# MAGIC | 作业 (Job) `hytech_ws_drip_producer` | 可选，只供讲师在自己的测试工作区使用：向共享落地区写入新的 CDC 文件（这里不运行）。不要在 Hytech 的课堂上运行：学员用 `labs/00b_Live_Data` 生成自己的数据<br>Optional, for an instructor's own test workspace only: writes new CDC files into the shared landing zone (not run here). Don't run it in the Hytech class: participants generate their own data with `labs/00b_Live_Data` |
 # MAGIC | 管道 (Pipeline) `hytech_trade_lakehouse_solution` | 参考答案管道，输出到参考答案 schema<br>Reference solution pipeline, writes the solutions schema |
 # MAGIC | 作业 (Job) `hytech_daily_trading_reporting_solution` | 实验 04 的参考答案作业<br>Reference solution job for lab 04 |
 # MAGIC
@@ -239,15 +239,18 @@ setup_job = {
         task("participant_schemas", "setup/04_participant_schemas", ["create_catalog_schemas"]),
         task("ops_views", "setup/05_ops_views", ["create_catalog_schemas"]),
         task("cost_dashboard", "setup/07_cost_dashboard", ["ops_views"]),
+        task("workshop_warehouses", "setup/08_workshop_warehouses"),
         task("install_genie_code_skill", "setup/06_install_genie_code_skill"),
     ],
 }
 
 drip_job = {
     "name": "hytech_ws_drip_producer",
-    "description": "讲师专用：按间隔写入新的 DMS 风格 CDC 文件和应用事件。new_server=mt5-hk-01 上线新 MT5 服务器；"
-                   "bad_batch_pct 注入无效成交。 / Instructor-only: writes new DMS-style CDC files and app events every "
-                   "interval. new_server=mt5-hk-01 onboards a new MT5 server; bad_batch_pct injects invalid deals.",
+    "description": "可选，只供讲师在自己的测试工作区使用（课堂上学员用 labs/00b_Live_Data）：按间隔向共享落地区写入新的 "
+                   "DMS 风格 CDC 文件和应用事件。new_server=mt5-hk-01 上线新 MT5 服务器；bad_batch_pct 注入无效成交。 / "
+                   "Optional, for an instructor's own test workspace only (in class, participants use labs/00b_Live_Data): "
+                   "writes new DMS-style CDC files and app events into the shared landing zone every interval. "
+                   "new_server=mt5-hk-01 onboards a new MT5 server; bad_batch_pct injects invalid deals.",
     "tags": TAGS,
     "max_concurrent_runs": 1,
     "parameters": [
@@ -294,6 +297,12 @@ if manage:
         share("dashboards", w.api_client.do("GET", "/api/2.0/workspace/get-status", query={"path": dash})["resource_id"], manage)
     except Exception as e:  # noqa: BLE001 - the dashboard only exists after the setup job has run
         print("⚠️  cost dashboard not shared ->", str(e).splitlines()[0][:160])
+
+# 08 创建的 SQL 仓库也共享给讲师 (share the SQL warehouses 08 created with the instructors too)
+if manage:
+    for x in w.api_client.do("GET", "/api/2.0/sql/warehouses").get("warehouses", []):
+        if x["name"] in ("hytech_workshop_sql", "hytech_workshop_rt"):
+            share("warehouses", x["id"], manage)
 
 # COMMAND ----------
 
@@ -342,6 +351,7 @@ solution_job = {
         {"name": "llm_endpoint", "default": P["llm_endpoint"]},
         {"name": "webhook_url", "default": ""},
         {"name": "fail_server", "default": ""},
+        {"name": "report_date", "default": ""},
     ],
     "tasks": [
         {"task_key": "run_pipeline", "pipeline_task": {"pipeline_id": pipeline_id},
@@ -389,9 +399,9 @@ else:
 # MAGIC %md
 # MAGIC ## 6 · 结果 (Result)
 # MAGIC
-# MAGIC 下面是创建的资源链接。滴灌程序在课堂上由讲师启动（见讲师指南）。
+# MAGIC 下面是创建的资源链接。课堂上不需要运行任何作业：学员需要新数据时自己运行 `labs/00b_Live_Data`；滴灌程序作业是可选的，不要在课堂上运行（见讲师指南）。
 # MAGIC
-# MAGIC Links to everything that was created. The instructors start the drip producer during class (see the facilitator guide).
+# MAGIC Links to everything that was created. Nothing needs to run in class: participants run `labs/00b_Live_Data` when they need new data; the drip producer job is optional, so don't run it in class (see the facilitator guide).
 
 # COMMAND ----------
 

@@ -23,6 +23,8 @@ resources:
           default: ""
         - name: fail_server
           default: ""
+        - name: report_date
+          default: ""
       tasks:
         - task_key: run_pipeline
           pipeline_task:

@@ -14,8 +14,8 @@ Follow these rules whenever you generate or change code for the Hytech trade lak
 
 ## 1. 事物的位置 (Where things live)
 
-- 着陆区（只读）: `/Volumes/hytech_de_workshop/raw/landing/`<br>
-Landing zone (read-only): `/Volumes/hytech_de_workshop/raw/landing/`
+- 着陆区（只读）: `/Volumes/hytech_de_workshop/raw/landing/`；每位学员自己的副本（学员管道的 `landing_root`，`00b_Live_Data` 向其中写入新文件）: `/Volumes/hytech_de_workshop/u_<name>/landing/`<br>
+Landing zone (read-only): `/Volumes/hytech_de_workshop/raw/landing/`; each participant's own copy (their pipeline's `landing_root`, where `00b_Live_Data` writes new files): `/Volumes/hytech_de_workshop/u_<name>/landing/`
   - `mt5/<server_id>/<table>/` — AWS DMS Parquet: `LOAD0000000N.parquet`（全量）和
     `yyyymmdd-hhmmssfff.parquet`（CDC）。每行都有 `Op`（`I`/`U`/`D`）和 `cdc_ts`（提交时间）。
     表：`mt5_users`, `mt5_deals`, `mt5_positions`。服务器：`mt5-sg-01`, `mt5-sg-02`, `mt5-uk-01`,

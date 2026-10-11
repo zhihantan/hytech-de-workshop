@@ -63,9 +63,9 @@ run(f"ALTER SCHEMA {catalog}.raw SET TAGS ('workshop' = 'hytech_de_2026', 'layer
 
 # MAGIC %md
 # MAGIC ### 学员组的授权 (Grants for the participant group)
-# MAGIC 学员可以**读取**数据接入区、解决方案和 ops 视图，并**创建自己的 schema**。授权需要一个**账户级别**的组；如果还不存在，会跳过并显示警告。
+# MAGIC 学员可以**读取**数据接入区、数据生成器的状态（`raw.producer`：实验 00 把它复制到学员自己的 schema，供 `00b_Live_Data` 使用）、解决方案和 ops 视图，并**创建自己的 schema**。授权需要一个**账户级别**的组；如果还不存在，会跳过并显示警告。
 # MAGIC
-# MAGIC Participants can **read** the landing zone, solutions and ops views, and **create their own schema**.
+# MAGIC Participants can **read** the landing zone, the data generator's state (`raw.producer`: lab 00 copies it into their own schema for `00b_Live_Data`), solutions and ops views, and **create their own schema**.
 # MAGIC Grants need an **account-level** group; if it does not exist yet, they are skipped with a warning.
 
 # COMMAND ----------
@@ -75,6 +75,7 @@ grants = [
     f"GRANT USE SCHEMA ON SCHEMA {catalog}.raw TO `{group}`",
     f"GRANT READ VOLUME ON VOLUME {catalog}.raw.landing TO `{group}`",
     f"GRANT READ VOLUME ON VOLUME {catalog}.raw.ref TO `{group}`",
+    f"GRANT READ VOLUME ON VOLUME {catalog}.raw.producer TO `{group}`",
     f"GRANT USE SCHEMA, SELECT ON SCHEMA {catalog}.solutions TO `{group}`",
     f"GRANT USE SCHEMA, SELECT ON SCHEMA {catalog}.ops TO `{group}`",
 ]
