@@ -3,10 +3,13 @@ resources:
     hytech_ws_drip_producer:
       name: hytech_ws_drip_producer
       description: >-
-        讲师专用。每个间隔写入新的 DMS 风格 CDC 文件（成交、平仓、入金、客户更新）
-        以及应用程序事件。new_server=mt5-hk-01 可以注册新的 MT5 服务器；bad_batch_pct 会注入无效成交。
-        Instructor-only. Writes new DMS-style CDC files every interval (trades, closes, funding, client updates)
-        plus app events. new_server=mt5-hk-01 onboards a new MT5 server; bad_batch_pct injects invalid deals.
+        可选，只供讲师在自己的测试工作区使用（课堂上学员用 labs/00b_Live_Data）。每个间隔向共享落地区写入新的
+        DMS 风格 CDC 文件（成交、平仓、入金、客户更新）以及应用程序事件。new_server=mt5-hk-01 可以注册新的
+        MT5 服务器；bad_batch_pct 会注入无效成交。
+        Optional, for an instructor's own test workspace only (in class, participants use labs/00b_Live_Data).
+        Writes new DMS-style CDC files into the shared landing zone every interval (trades, closes, funding,
+        client updates) plus app events. new_server=mt5-hk-01 onboards a new MT5 server; bad_batch_pct injects
+        invalid deals.
       max_concurrent_runs: 1
       parameters:
         - name: catalog

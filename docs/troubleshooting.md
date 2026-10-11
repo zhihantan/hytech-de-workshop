@@ -17,6 +17,7 @@
 | `_rescued_data` 始终为 NULL<br>`_rescued_data` is always NULL | Schema 被推断（类型被扩大）而不是使用合同 schema<br>Schema was inferred (it widened types) instead of using the contract schema | 使用显式 schema + `rescuedDataColumn`，如实验 02 / `02_bronze_app_events.sql`<br>Use the explicit schema + `rescuedDataColumn` as in lab 02 / `02_bronze_app_events.sql` |
 | 重新运行 Auto Loader 或管道后没有新行<br>No new rows after re-running Auto Loader or the pipeline | 你的落地区没有新文件<br>No new files in your landing zone | 运行 `00b_Live_Data`（`ticks` = 1），然后再运行 Auto Loader 单元格或管道<br>Run `00b_Live_Data` (`ticks` = 1), then run the Auto Loader cell or the pipeline again |
 | `00b_Live_Data`：❌ 还没有你自己的落地区<br>`00b_Live_Data`: ❌ your own landing zone isn't there yet | 实验 00 第 1b 步没有运行，或者没有读取 `raw.producer` 的权限<br>Step 1b of lab 00 didn't run, or there's no read permission on `raw.producer` | 运行实验 00 第 1b 步；如果它显示 ⚠️ raw.producer，请管理员重新运行 setup（`00_master_setup`）<br>Run step 1b of lab 00; if it shows the ⚠️ raw.producer line, ask the admin to re-run setup (`00_master_setup`) |
+| 运行了 00b，Auto Loader 或管道仍然没有新行，或 reconcile 在 `raw/landing` 里找文件<br>You ran 00b but Auto Loader or the pipeline still shows no new rows, or reconcile looks in `raw/landing` | 你的实验副本是这次更新之前复制的（实验 00 从不覆盖已有文件），旧副本仍读取共享落地区<br>Your lab copy predates this update (lab 00 never overwrites files), so the old copy still reads the shared landing zone | 实验 02 应该打印 `landing: /Volumes/…/u_<你的名字>/landing`。如果不是：删除 `/Users/<你>/hytech_de_lab/`，在共享文件夹中打开 `/Workspace/Shared/hytech-de-workshop/labs/00_Start_Here` 并全部运行，再把管道的 `landing_root` 改成你自己的落地区并 **Full refresh all**<br>Lab 02 should print `landing: /Volumes/…/u_<your_name>/landing`. If it doesn't: delete `/Users/<you>/hytech_de_lab/`, open `/Workspace/Shared/hytech-de-workshop/labs/00_Start_Here` in the shared folder and run all of it, then point your pipeline's `landing_root` at your own landing zone and run **Full refresh all** |
 | 把 `landing_root` 改成自己的落地区之后，bronze / silver 里有重复<br>Duplicates in bronze / silver after switching `landing_root` to your own landing zone | 管道从新路径把全部历史又读了一遍<br>The pipeline read the whole history again from the new path | 管道 → **Full refresh all** 一次（见 `labs/03_pipeline/README.md`）<br>Pipeline → **Full refresh all** once (see `labs/03_pipeline/README.md`) |
 | 04c 的 DQ 闸门走了 false 分支，可你没有改坏数据<br>04c's DQ gate takes the false branch although you didn't break anything | 实验 04 §6 的坏批次（`bad_batch_pct`）还没有被处理<br>Lab 04 §6's bad batch (`bad_batch_pct`) hadn't been processed yet | 运行一次你的管道（或作业），然后重新做 04c 的这一步<br>Run your pipeline (or job) once, then redo that step of 04c |
 | 系统表查询不到今天的数据<br>System-table queries return nothing for today | 账单数据延迟数小时<br>Billing data lags by hours | 查看昨天 / 第 1 天；作业和管道时间线更快到达<br>Look at yesterday / Day 1; job and pipeline timelines arrive sooner |
@@ -44,9 +45,9 @@
 
 ## 重置学员 (Reset a participant)
 
-先在 UI 中删除该学员的管道和作业（否则管道会保留旧的检查点），然后运行：
+先在 UI 中删除该学员的管道和作业（否则管道会保留旧的检查点），以及 `/Users/<学员>/hytech_de_lab/` 文件夹（否则实验 00 会保留旧的实验副本），然后运行：
 
-Delete their pipeline and job in the UI first (or the pipeline keeps the old checkpoints).
+Delete their pipeline and job in the UI first (or the pipeline keeps the old checkpoints), and their `/Users/<participant>/hytech_de_lab/` folder (or lab 00 keeps the old lab copies).
 
 ```sql
 DROP SCHEMA hytech_de_workshop.u_<name> CASCADE;   -- 然后重新运行 labs/00_Start_Here (then re-run labs/00_Start_Here)

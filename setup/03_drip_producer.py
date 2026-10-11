@@ -1,6 +1,6 @@
 # Databricks notebook source
 # MAGIC %md
-# MAGIC # 03 · 实时数据滴灌 (Drip producer) — instructor only
+# MAGIC # 03 · 实时数据滴灌 (Drip producer) — 可选，只供讲师的测试工作区 (optional, an instructor's own test workspace)
 # MAGIC
 # MAGIC 在实验期间保持数据接入区"活跃"：每 `interval_seconds`，为每个 MT5 服务器的每个表写入一个 DMS 风格的变更数据 (CDC) 文件（新成交、平仓、头寸标记、入金/出金、客户更新）和一个应用事件 JSON 文件。
 # MAGIC
@@ -8,11 +8,15 @@
 # MAGIC MT5 table per server (new trades, closes, position marks, deposits/withdrawals, client updates) and one
 # MAGIC app-events JSON file.
 # MAGIC
-# MAGIC | 参数 (Parameter) | 在课堂中的使用 (Use in class) |
+# MAGIC **不要在 Hytech 的课堂上运行。** 每位学员用 `labs/00b_Live_Data` 向自己的落地区写入新数据；这个作业只写共享落地区（只有参考答案管道读取）。学员重新运行实验 00 时，会把它写的文件复制进自己的落地区，成交编号会和他们自己的 tick 重复。
+# MAGIC
+# MAGIC **Don't run it in the Hytech class.** Each participant writes new data into their own landing zone with `labs/00b_Live_Data`; this job writes only to the shared landing zone (which only the solution pipeline reads). A participant who re-runs lab 00 would copy its files into their own landing zone, and its deal numbers would repeat their own ticks'.
+# MAGIC
+# MAGIC | 参数 (Parameter) | 在讲师的测试工作区中 (On an instructor's test workspace) |
 # MAGIC |---|---|
-# MAGIC | `duration_minutes` / `interval_seconds` | 在 M3–M5 期间运行（例如 60 分钟，每 30 秒） |
-# MAGIC | `new_server=mt5-hk-01` | **M5 修复演示**：载入新的 MT5 服务器（DMS 全量，然后 CDC） |
-# MAGIC | `bad_batch_pct=30` | **M5 数据质量闸门演示**：30% 的新成交交易无效 → 期望将其删除 → 作业采用 `false` 分支 |
+# MAGIC | `duration_minutes` / `interval_seconds` | 让共享落地区持续有新文件（例如 60 分钟，每 30 秒）<br>Keep new files arriving in the shared landing zone (for example 60 minutes, every 30 s) |
+# MAGIC | `new_server=mt5-hk-01` | 上线新的 MT5 服务器（DMS 全量，然后 CDC）<br>Onboard a new MT5 server (DMS full load, then CDC) |
+# MAGIC | `bad_batch_pct=30` | 30% 的新成交无效 → 期望将其删除 → 作业走 `false` 分支<br>30% of new trades are invalid → expectations drop them → the job takes the `false` branch |
 
 # COMMAND ----------
 

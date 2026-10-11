@@ -124,3 +124,21 @@ def test_troubleshooting_covers_your_own_live_data():
     text = read("docs/troubleshooting.md")
     for needle in ("00b_Live_Data", "raw.producer", "Full refresh all", "bad_batch_pct"):
         assert needle in text, needle
+
+
+def test_setup_and_the_drip_job_say_it_is_optional_and_not_for_class():
+    # Triones 每次运行设置都会读到这些文字 (Triones reads these words on every setup run)
+    for path in ("setup/00_master_setup.py", "setup/03_drip_producer.py", "resources/producer.job.yml"):
+        text = read(path)
+        for stale in ("during class", "课堂上由讲师启动", "课堂上持续写入", "在 M3–M5 期间运行", "Use in class",
+                      "Instructor-only", "讲师专用", "instructor only"):
+            assert stale not in text, (path, stale)
+        assert "00b_Live_Data" in text, path
+
+
+def test_troubleshooting_covers_a_lab_copy_made_before_this_update():
+    text = read("docs/troubleshooting.md")
+    row = next(line for line in text.splitlines() if "reconcile" in line and "raw/landing" in line)
+    assert "hytech_de_lab/" in row and "00_Start_Here" in row and "Full refresh all" in row
+    reset = text[text.index("## 重置学员 (Reset a participant)"):text.index("## 重新生成数据")]
+    assert "hytech_de_lab/" in reset
